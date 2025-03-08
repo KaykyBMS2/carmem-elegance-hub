@@ -109,6 +109,27 @@
     @apply relative py-2 px-4 font-montserrat font-medium text-brand-dark transition-all duration-300 hover:text-brand-purple after:absolute after:w-0 after:h-0.5 after:bg-brand-purple after:bottom-0 after:left-1/2 after:-translate-x-1/2 hover:after:w-full after:transition-all after:duration-300;
   }
   
+  .mobile-nav-link {
+    @apply relative inline-block text-2xl font-montserrat font-medium transition-all duration-300 hover:text-brand-purple;
+    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.5);
+  }
+  
+  .mobile-nav-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, #b982ff, transparent);
+    transition: width 0.3s ease;
+  }
+  
+  .mobile-nav-link:hover::after {
+    width: 100%;
+  }
+  
   .main-container {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }

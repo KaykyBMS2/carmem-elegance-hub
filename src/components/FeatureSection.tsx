@@ -10,7 +10,12 @@ const FeatureSection = () => {
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting) {
+          // Adiciona a classe de animação e não remove
           entry.target.classList.add('animate-fade-in');
+          // Remover a classe opacity-0 para manter visível após animação
+          entry.target.classList.remove('opacity-0');
+          // Desconecta o observer após a animação para evitar repetição
+          observer.unobserve(entry.target);
         }
       },
       { threshold: 0.1 }
@@ -51,7 +56,7 @@ const FeatureSection = () => {
   ];
 
   return (
-    <section ref={sectionRef} className="section-padding opacity-0">
+    <section ref={sectionRef} className="section-padding opacity-0 transition-opacity duration-700">
       <div className="main-container">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="section-title">Nossos Serviços</h2>
@@ -64,7 +69,7 @@ const FeatureSection = () => {
           {features.map((feature, index) => (
             <div 
               key={index}
-              className="glass-card p-8 flex flex-col items-center text-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+              className="glass-card p-8 flex flex-col items-center text-center transition-all duration-500 hover:shadow-lg hover:-translate-y-1"
               style={{ animationDelay: `${index * 150}ms` }}
             >
               <div className="w-16 h-16 rounded-full bg-brand-purple/10 flex items-center justify-center mb-6">

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ShoppingBag } from 'lucide-react';
+import { Menu, X, ShoppingBag, Flower } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Navbar = () => {
@@ -31,8 +31,10 @@ const Navbar = () => {
   
   return (
     <nav 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'py-3 glass-card border-b border-white/20' : 'py-5 bg-transparent'
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        scrolled 
+          ? 'py-2 glass-card border-b border-white/20 shadow-sm' 
+          : 'py-4 bg-transparent'
       }`}
     >
       <div className="main-container flex items-center justify-between">
@@ -62,69 +64,116 @@ const Navbar = () => {
           </div>
         </Link>
         
-        {/* Desktop Menu */}
+        {/* Desktop Menu - Novo Design */}
         {!isMobile && (
-          <div className="hidden md:flex items-center space-x-1">
-            <Link to="/" className={`nav-link ${location.pathname === '/' ? 'text-brand-purple after:w-full' : ''}`}>
-              Início
-            </Link>
-            <Link to="/shop" className={`nav-link ${location.pathname === '/shop' ? 'text-brand-purple after:w-full' : ''}`}>
-              Loja
-            </Link>
-            <Link to="/gallery" className={`nav-link ${location.pathname === '/gallery' ? 'text-brand-purple after:w-full' : ''}`}>
-              Ensaios
-            </Link>
-            <Link to="/shop" className="ml-4 button-primary flex items-center">
-              <ShoppingBag className="mr-2 h-4 w-4" />
+          <div className="hidden md:flex items-center gap-1">
+            <div className="glass-effect px-4 py-2 rounded-full flex items-center gap-1 shadow-subtle">
+              <Link 
+                to="/" 
+                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-medium ${
+                  location.pathname === '/' 
+                    ? 'bg-brand-purple text-white shadow-sm' 
+                    : 'hover:bg-white/50'
+                }`}
+              >
+                Início
+              </Link>
+              <Link 
+                to="/shop" 
+                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-medium ${
+                  location.pathname === '/shop' 
+                    ? 'bg-brand-purple text-white shadow-sm' 
+                    : 'hover:bg-white/50'
+                }`}
+              >
+                Loja
+              </Link>
+              <Link 
+                to="/gallery" 
+                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-medium ${
+                  location.pathname === '/gallery' 
+                    ? 'bg-brand-purple text-white shadow-sm' 
+                    : 'hover:bg-white/50'
+                }`}
+              >
+                Ensaios
+              </Link>
+            </div>
+            <Link 
+              to="/shop" 
+              className="ml-4 button-primary flex items-center group"
+            >
+              <ShoppingBag className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
               <span>Explorar</span>
             </Link>
           </div>
         )}
         
-        {/* Mobile Menu Button */}
+        {/* Mobile Menu Button - Novo Design */}
         {isMobile && (
           <button 
             onClick={() => setIsOpen(!isOpen)}
-            className="z-50 p-2 rounded-full bg-white/80 shadow-subtle"
+            className={`z-50 p-3 rounded-full transition-all duration-300 ${
+              isOpen 
+                ? 'bg-white shadow-md rotate-90' 
+                : 'bg-white/80 shadow-subtle'
+            }`}
             aria-label="Menu"
           >
             {isOpen ? (
-              <X className="h-6 w-6 text-brand-purple" />
+              <X className="h-5 w-5 text-brand-purple" />
             ) : (
-              <Menu className="h-6 w-6 text-brand-purple" />
+              <Menu className="h-5 w-5 text-brand-purple" />
             )}
           </button>
         )}
       </div>
       
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Novo Design Elegante */}
       {isMobile && (
         <div 
-          className={`fixed inset-0 bg-brand-light z-40 transition-transform duration-300 ease-in-out glass-effect ${
-            isOpen ? 'translate-x-0' : 'translate-x-full'
+          className={`fixed inset-0 backdrop-blur-md transition-all duration-500 ease-in-out ${
+            isOpen 
+              ? 'opacity-100 pointer-events-auto' 
+              : 'opacity-0 pointer-events-none'
           }`}
         >
-          <div className="flex flex-col items-center justify-center h-full space-y-8">
+          <div className={`absolute inset-0 bg-gradient-to-b from-white/80 to-brand-purple/20 transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0'}`}></div>
+          
+          <div className={`flex flex-col items-center justify-center h-full space-y-8 transition-all duration-500 ${isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+            <div className="relative mb-8">
+              <Flower className="absolute -top-8 -left-12 h-6 w-6 text-brand-purple/30 rotate-45" />
+              <Flower className="absolute -top-6 -right-10 h-4 w-4 text-brand-purple/20" />
+              <div className="text-center">
+                <h2 className="font-montserrat font-semibold text-2xl">Menu</h2>
+                <div className="h-0.5 w-12 bg-gradient-to-r from-transparent via-brand-purple to-transparent mx-auto mt-2"></div>
+              </div>
+            </div>
+            
             <Link 
               to="/" 
-              className={`text-2xl font-montserrat font-medium ${location.pathname === '/' ? 'text-brand-purple' : ''}`}
+              className={`mobile-nav-link ${location.pathname === '/' ? 'text-brand-purple' : ''}`}
             >
               Início
             </Link>
             <Link 
               to="/shop" 
-              className={`text-2xl font-montserrat font-medium ${location.pathname === '/shop' ? 'text-brand-purple' : ''}`}
+              className={`mobile-nav-link ${location.pathname === '/shop' ? 'text-brand-purple' : ''}`}
             >
               Loja
             </Link>
             <Link 
               to="/gallery" 
-              className={`text-2xl font-montserrat font-medium ${location.pathname === '/gallery' ? 'text-brand-purple' : ''}`}
+              className={`mobile-nav-link ${location.pathname === '/gallery' ? 'text-brand-purple' : ''}`}
             >
               Ensaios
             </Link>
-            <Link to="/shop" className="button-primary mt-8 flex items-center">
-              <ShoppingBag className="mr-2 h-4 w-4" />
+            
+            <Link 
+              to="/shop" 
+              className="button-primary mt-8 flex items-center group"
+            >
+              <ShoppingBag className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
               <span>Explorar</span>
             </Link>
           </div>
