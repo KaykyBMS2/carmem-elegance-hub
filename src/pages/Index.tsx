@@ -70,6 +70,7 @@ const Index = () => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('animate-fade-in-up');
+          entry.target.classList.remove('opacity-0');
           observer.unobserve(entry.target);
         }
       });

@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useState } from 'react';
 import { Send, CheckCircle } from 'lucide-react';
 
@@ -12,7 +11,11 @@ const ContactSection = () => {
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting) {
+          // Add the animation class and remove opacity-0 to keep it visible after animation
           entry.target.classList.add('animate-fade-in');
+          entry.target.classList.remove('opacity-0');
+          // Disconnect the observer after animation to avoid repetition
+          observer.unobserve(entry.target);
         }
       },
       { threshold: 0.1 }
@@ -46,7 +49,7 @@ const ContactSection = () => {
   };
   
   return (
-    <section ref={sectionRef} id="contact" className="section-padding opacity-0">
+    <section ref={sectionRef} id="contact" className="section-padding opacity-0 transition-opacity duration-700">
       <div className="main-container">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Contact Information */}

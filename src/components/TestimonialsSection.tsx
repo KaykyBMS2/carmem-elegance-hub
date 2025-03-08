@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useState } from 'react';
 import TestimonialCard from './TestimonialCard';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -52,7 +51,11 @@ const TestimonialsSection = () => {
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting) {
+          // Add the animation class and remove opacity-0 to keep it visible after animation
           entry.target.classList.add('animate-fade-in');
+          entry.target.classList.remove('opacity-0');
+          // Disconnect the observer after animation to avoid repetition
+          observer.unobserve(entry.target);
         }
       },
       { threshold: 0.1 }
@@ -104,7 +107,7 @@ const TestimonialsSection = () => {
   };
   
   return (
-    <section ref={sectionRef} className="section-padding opacity-0">
+    <section ref={sectionRef} className="section-padding opacity-0 transition-opacity duration-700">
       <div className="main-container">
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-block">
