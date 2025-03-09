@@ -1,230 +1,124 @@
 
-import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { User, ShoppingBag, Bell, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bell, User, LogOut, Cog, Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import Navbar from '@/components/Navbar';
-import { Badge } from '@/components/ui/badge';
+import Footer from '@/components/Footer';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
-interface UserProfileLayoutProps {
-  children: React.ReactNode;
-}
-
-const UserProfileLayout = ({ children }: UserProfileLayoutProps) => {
-  const { profile, unreadCount, signOut } = useAuth();
+const UserProfileLayout = () => {
+  const { user, profile, signOut, unreadCount } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const sidebarRef = useRef<HTMLDivElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  // Fechar a sidebar se clicar fora dela
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
-        setSidebarOpen(false);
-      }
-    };
+    if (profile?.avatar_url) {
+      setAvatarUrl(profile.avatar_url);
+    }
+  }, [profile]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const handleLogout = async () => {
+  const handleSignOut = async () => {
     await signOut();
+    toast({
+      title: "Até logo!",
+      description: "Você saiu da sua conta.",
+    });
     navigate('/');
   };
 
-  // Avatar placeholder com as iniciais
-  const getInitials = () => {
-    if (!profile?.name) return 'U';
-    
-    const names = profile.name.split(' ');
-    if (names.length === 1) return names[0].charAt(0).toUpperCase();
-    
-    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
-  };
-
   return (
-    <div className="relative min-h-screen bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
       
-      <div className="container relative mx-auto mt-24 max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
-        {/* Mobile header */}
-        <div className="mb-6 flex items-center justify-between lg:hidden">
-          <h1 className="text-2xl font-bold">Minha Conta</h1>
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-        </div>
-        
-        <div className="lg:grid lg:grid-cols-12 lg:gap-8">
-          {/* Mobile sidebar */}
-          <div
-            ref={sidebarRef}
-            className={`fixed inset-y-0 right-0 z-50 w-64 transform bg-white p-6 shadow-lg transition-transform duration-300 lg:hidden ${
-              sidebarOpen ? 'translate-x-0' : 'translate-x-full'
-            }`}
-          >
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="absolute right-4 top-4" 
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
+      <div className="flex-1 pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-[250px_1fr]">
             
-            <div className="mb-6 mt-10 flex flex-col items-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-purple/10 text-lg font-semibold text-brand-purple">
-                {getInitials()}
-              </div>
-              <h2 className="mt-2 text-lg font-medium">{profile?.name}</h2>
-              <p className="text-sm text-muted-foreground">{profile?.email}</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start"
-                onClick={() => {
-                  setSidebarOpen(false);
-                  navigate('/profile');
-                }}
-              >
-                <User className="mr-2 h-4 w-4" />
-                Meu Perfil
-              </Button>
-              
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start"
-                onClick={() => {
-                  setSidebarOpen(false);
-                  navigate('/profile?tab=notifications');
-                }}
-              >
-                <div className="relative mr-2">
-                  <Bell className="h-4 w-4" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
+            {/* Sidebar */}
+            <aside className="bg-white rounded-xl shadow-subtle p-6">
+              <div className="flex flex-col items-center mb-6">
+                <div className="relative">
+                  {avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt={profile?.name || 'Perfil'} 
+                      className="w-20 h-20 rounded-full object-cover border-2 border-brand-purple"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-brand-purple/20 flex items-center justify-center text-2xl font-semibold text-brand-purple">
+                      {profile?.name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
                   )}
                 </div>
-                Notificações
-                {unreadCount > 0 && (
-                  <Badge variant="secondary" className="ml-auto">
-                    {unreadCount}
-                  </Badge>
-                )}
-              </Button>
-              
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start"
-                onClick={() => {
-                  setSidebarOpen(false);
-                  navigate('/profile?tab=settings');
-                }}
-              >
-                <Cog className="mr-2 h-4 w-4" />
-                Configurações
-              </Button>
-              
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-red-500"
-                onClick={handleLogout}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Sair
-              </Button>
-            </div>
-          </div>
-          
-          {/* Desktop sidebar */}
-          <div className="sticky hidden lg:col-span-3 lg:block">
-            <div className="rounded-lg border bg-white p-6 shadow-sm">
-              <div className="mb-6 flex flex-col items-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-purple/10 text-xl font-semibold text-brand-purple">
-                  {getInitials()}
-                </div>
-                <h2 className="mt-2 text-lg font-medium">{profile?.name}</h2>
-                <p className="text-sm text-muted-foreground">{profile?.email}</p>
+                <h2 className="mt-4 text-lg font-medium text-gray-900">
+                  {profile?.name || 'Minha Conta'}
+                </h2>
+                <p className="text-sm text-gray-500">{user?.email}</p>
               </div>
               
-              <div className="space-y-2">
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start"
-                  onClick={() => navigate('/profile')}
+              <nav className="space-y-1">
+                <NavLink 
+                  to="/profile" 
+                  end
+                  className={({ isActive }) => `flex items-center px-4 py-2.5 text-sm font-medium rounded-lg ${
+                    isActive ? 'bg-brand-purple/10 text-brand-purple' : 'text-gray-700 hover:bg-gray-100'
+                  }`}
                 >
-                  <User className="mr-2 h-4 w-4" />
-                  Meu Perfil
-                </Button>
+                  <User className="mr-3 h-5 w-5" />
+                  Perfil
+                </NavLink>
                 
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start"
-                  onClick={() => navigate('/profile?tab=notifications')}
+                <NavLink 
+                  to="/profile/orders" 
+                  className={({ isActive }) => `flex items-center px-4 py-2.5 text-sm font-medium rounded-lg ${
+                    isActive ? 'bg-brand-purple/10 text-brand-purple' : 'text-gray-700 hover:bg-gray-100'
+                  }`}
                 >
-                  <div className="relative mr-2">
-                    <Bell className="h-4 w-4" />
+                  <ShoppingBag className="mr-3 h-5 w-5" />
+                  Meus Pedidos
+                </NavLink>
+                
+                <NavLink 
+                  to="/profile/notifications" 
+                  className={({ isActive }) => `flex items-center px-4 py-2.5 text-sm font-medium rounded-lg ${
+                    isActive ? 'bg-brand-purple/10 text-brand-purple' : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="relative mr-3">
+                    <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                         {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
                   </div>
                   Notificações
-                  {unreadCount > 0 && (
-                    <Badge variant="secondary" className="ml-auto">
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </Button>
+                </NavLink>
                 
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start"
-                  onClick={() => navigate('/profile?tab=settings')}
-                >
-                  <Cog className="mr-2 h-4 w-4" />
-                  Configurações
-                </Button>
-                
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start text-red-500"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sair
-                </Button>
-              </div>
-            </div>
-          </div>
-          
-          {/* Main content */}
-          <div className="lg:col-span-9">
-            {children}
+                <div className="pt-6 mt-6 border-t border-gray-200">
+                  <Button
+                    variant="ghost" 
+                    className="w-full justify-start text-red-600 hover:bg-red-50 hover:text-red-700"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="mr-3 h-5 w-5" />
+                    Sair
+                  </Button>
+                </div>
+              </nav>
+            </aside>
+            
+            {/* Main content */}
+            <main className="bg-white rounded-xl shadow-subtle p-6">
+              <Outlet />
+            </main>
           </div>
         </div>
       </div>
+      
+      <Footer />
     </div>
   );
 };

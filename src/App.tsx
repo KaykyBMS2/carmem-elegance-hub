@@ -24,6 +24,11 @@ import ProductForm from "./pages/admin/ProductForm";
 import OrderDetail from "./pages/admin/OrderDetail";
 import CustomerDetail from "./pages/admin/CustomerDetail";
 import AdminSettings from "./pages/admin/AdminSettings";
+import Auth from "./pages/Auth/Auth";
+import UserProfileLayout from "./pages/Profile/UserProfileLayout";
+import UserProfile from "./pages/Profile/UserProfile";
+import OrderHistory from "./pages/Profile/OrderHistory";
+import NotificationPanel from "./pages/Profile/NotificationPanel";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +60,26 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return <>{children}</>;
 };
+
+// Customer Protected Route component
+const CustomerProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <div className="flex h-screen w-full items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
+    </div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Use the AuthContext from contexts/AuthContext.tsx
+const useAuth = () => useContext(AuthContext);
 
 const App = () => {
   const [authState, setAuthState] = useState({
@@ -138,6 +163,24 @@ const App = () => {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
+                
+                {/* Auth routes */}
+                <Route path="/auth/login" element={<Auth />} />
+                <Route path="/auth/register" element={<Auth />} />
+                
+                {/* User profile routes */}
+                <Route 
+                  path="/profile" 
+                  element={
+                    <CustomerProtectedRoute>
+                      <UserProfileLayout />
+                    </CustomerProtectedRoute>
+                  }
+                >
+                  <Route index element={<UserProfile />} />
+                  <Route path="orders" element={<OrderHistory />} />
+                  <Route path="notifications" element={<NotificationPanel />} />
+                </Route>
                 
                 {/* Admin routes */}
                 <Route path="/admin/login" element={<Login />} />

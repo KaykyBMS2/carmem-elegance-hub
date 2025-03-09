@@ -1,14 +1,16 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ShoppingBag, Flower } from 'lucide-react';
+import { Menu, X, ShoppingBag, Flower, User } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const isMobile = useIsMobile();
+  const { isAuthenticated, profile } = useAuth();
   
   // Handle scrolling effect
   useEffect(() => {
@@ -64,7 +66,7 @@ const Navbar = () => {
           </div>
         </Link>
         
-        {/* Desktop Menu - Novo Design */}
+        {/* Desktop Menu */}
         {!isMobile && (
           <div className="hidden md:flex items-center gap-1">
             <div className="glass-effect px-4 py-2 rounded-full flex items-center gap-1 shadow-subtle">
@@ -98,10 +100,50 @@ const Navbar = () => {
               >
                 Ensaios
               </Link>
+              <Link 
+                to="/about" 
+                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-medium ${
+                  location.pathname === '/about' 
+                    ? 'bg-brand-purple text-white shadow-sm' 
+                    : 'hover:bg-white/50'
+                }`}
+              >
+                Sobre
+              </Link>
+              <Link 
+                to="/contact" 
+                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-medium ${
+                  location.pathname === '/contact' 
+                    ? 'bg-brand-purple text-white shadow-sm' 
+                    : 'hover:bg-white/50'
+                }`}
+              >
+                Contato
+              </Link>
             </div>
+            
+            {/* User Auth */}
+            {isAuthenticated ? (
+              <Link 
+                to="/profile" 
+                className="ml-4 button-secondary flex items-center group"
+              >
+                <User className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
+                <span>Perfil</span>
+              </Link>
+            ) : (
+              <Link 
+                to="/auth/login" 
+                className="ml-4 button-secondary flex items-center group"
+              >
+                <User className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
+                <span>Entrar</span>
+              </Link>
+            )}
+            
             <Link 
               to="/shop" 
-              className="ml-4 button-primary flex items-center group"
+              className="ml-2 button-primary flex items-center group"
             >
               <ShoppingBag className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
               <span>Explorar</span>
@@ -109,7 +151,7 @@ const Navbar = () => {
           </div>
         )}
         
-        {/* Mobile Menu Button - Novo Design */}
+        {/* Mobile Menu Button */}
         {isMobile && (
           <button 
             onClick={() => setIsOpen(!isOpen)}
@@ -129,7 +171,7 @@ const Navbar = () => {
         )}
       </div>
       
-      {/* Mobile Menu - Novo Design Elegante */}
+      {/* Mobile Menu */}
       {isMobile && (
         <div 
           className={`fixed inset-0 backdrop-blur-md transition-all duration-500 ease-in-out ${
@@ -140,8 +182,8 @@ const Navbar = () => {
         >
           <div className={`absolute inset-0 bg-gradient-to-b from-white/80 to-brand-purple/20 transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0'}`}></div>
           
-          <div className={`flex flex-col items-center justify-center h-full space-y-8 transition-all duration-500 ${isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-            <div className="relative mb-8">
+          <div className={`flex flex-col items-center justify-center h-full space-y-6 transition-all duration-500 ${isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+            <div className="relative mb-4">
               <Flower className="absolute -top-8 -left-12 h-6 w-6 text-brand-purple/30 rotate-45" />
               <Flower className="absolute -top-6 -right-10 h-4 w-4 text-brand-purple/20" />
               <div className="text-center">
@@ -168,10 +210,39 @@ const Navbar = () => {
             >
               Ensaios
             </Link>
+            <Link 
+              to="/about" 
+              className={`mobile-nav-link ${location.pathname === '/about' ? 'text-brand-purple' : ''}`}
+            >
+              Sobre
+            </Link>
+            <Link 
+              to="/contact" 
+              className={`mobile-nav-link ${location.pathname === '/contact' ? 'text-brand-purple' : ''}`}
+            >
+              Contato
+            </Link>
+            
+            {/* Auth links for mobile */}
+            {isAuthenticated ? (
+              <Link 
+                to="/profile" 
+                className={`mobile-nav-link ${location.pathname.startsWith('/profile') ? 'text-brand-purple' : ''}`}
+              >
+                Meu Perfil
+              </Link>
+            ) : (
+              <Link 
+                to="/auth/login" 
+                className={`mobile-nav-link ${location.pathname.startsWith('/auth') ? 'text-brand-purple' : ''}`}
+              >
+                Entrar
+              </Link>
+            )}
             
             <Link 
               to="/shop" 
-              className="button-primary mt-8 flex items-center group"
+              className="button-primary mt-4 flex items-center group"
             >
               <ShoppingBag className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
               <span>Explorar</span>
