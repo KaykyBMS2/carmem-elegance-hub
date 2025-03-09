@@ -15,6 +15,7 @@ interface UserProfile {
   postal_code: string | null;
   birth_date: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 interface Notification {
