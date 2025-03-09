@@ -44,7 +44,11 @@ const Register = () => {
     setLoading(true);
     
     try {
-      const { error } = await signUp(email, password, { name });
+      // Pass user data to signUp method
+      const { error } = await signUp(email, password, { 
+        name,
+        email, // Ensure email is included in the profile data
+      });
       
       if (error) throw error;
       
@@ -56,6 +60,7 @@ const Register = () => {
       // Switch to login tab
       document.querySelector('[value="login"]')?.dispatchEvent(new MouseEvent('click'));
     } catch (error: any) {
+      console.error('Registration error:', error);
       toast({
         variant: "destructive",
         title: "Erro ao criar conta",
