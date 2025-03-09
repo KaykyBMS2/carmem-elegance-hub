@@ -192,7 +192,7 @@ const Categories = () => {
   };
   
   return (
-    <AdminLayout title="Categorias" description="Gerencie as categorias de produtos da loja.">
+    <AdminLayout title="Categorias">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative max-w-md">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />

@@ -107,7 +107,7 @@ const OrderDetail = () => {
   
   if (isOrderLoading) {
     return (
-      <AdminLayout title="Detalhes do Pedido" description="Carregando...">
+      <AdminLayout title="Detalhes do Pedido">
         <div className="flex justify-center p-12">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
         </div>
@@ -117,7 +117,7 @@ const OrderDetail = () => {
   
   if (!order) {
     return (
-      <AdminLayout title="Pedido não encontrado" description="O pedido solicitado não foi encontrado.">
+      <AdminLayout title="Pedido não encontrado">
         <div className="flex flex-col items-center justify-center p-12">
           <p className="mb-4 text-muted-foreground">O pedido solicitado não foi encontrado ou não existe.</p>
           <Button onClick={() => navigate('/admin/orders')}>
@@ -134,7 +134,6 @@ const OrderDetail = () => {
   return (
     <AdminLayout 
       title={`Pedido #${order.id.split('-')[0]}...`}
-      description="Detalhes completos do pedido e opções de gerenciamento."
       actions={
         <Button variant="outline" onClick={() => navigate('/admin/orders')}>
           <ArrowLeft className="mr-2 h-4 w-4" />

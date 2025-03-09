@@ -42,12 +42,12 @@ interface Product {
   is_rental: boolean;
   rental_price: number | null;
   created_at: string;
-  categories?: { id: string; name: string }[];
+  categories?: Array<{ id: string; name: string }>;
   primary_image?: string;
 }
 
-interface ProductWithDetails extends Product {
-  categories: Array<{ name: string }>;
+interface ProductWithDetails extends Omit<Product, 'categories'> {
+  categories: Array<{ id: string; name: string }>;
   primary_image: string | null;
 }
 

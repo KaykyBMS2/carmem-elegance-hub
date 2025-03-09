@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -75,7 +75,7 @@ const Orders = () => {
   };
   
   return (
-    <AdminLayout title="Gerenciamento de Pedidos" description="Visualize e gerencie todos os pedidos.">
+    <AdminLayout title="Gerenciamento de Pedidos">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative max-w-md">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />

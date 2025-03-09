@@ -45,7 +45,7 @@ const CustomerDetail = () => {
   
   if (isLoading) {
     return (
-      <AdminLayout title="Detalhes do Cliente" description="Carregando...">
+      <AdminLayout title="Detalhes do Cliente">
         <div className="flex justify-center p-12">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
         </div>
@@ -55,7 +55,7 @@ const CustomerDetail = () => {
   
   if (!customer) {
     return (
-      <AdminLayout title="Cliente não encontrado" description="O cliente solicitado não foi encontrado.">
+      <AdminLayout title="Cliente não encontrado">
         <div className="flex flex-col items-center justify-center p-12">
           <p className="mb-4 text-muted-foreground">O cliente solicitado não foi encontrado ou não existe.</p>
           <Button onClick={() => navigate('/admin/customers')}>
@@ -82,7 +82,6 @@ const CustomerDetail = () => {
   return (
     <AdminLayout 
       title="Detalhes do Cliente"
-      description={customer.name}
       actions={
         <Button variant="outline" onClick={() => navigate('/admin/customers')}>
           <ArrowLeft className="mr-2 h-4 w-4" />

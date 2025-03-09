@@ -231,9 +231,13 @@ const AdminSettings = () => {
     await supabase.auth.signOut();
     navigate('/admin/login');
   };
+
+  const handleRoleUpdate = (userId: string, role: 'admin' | 'staff') => {
+    updateAdminRole.mutate({ userId, role });
+  };
   
   return (
-    <AdminLayout title="Configurações" description="Gerencie as configurações da sua conta e do sistema.">
+    <AdminLayout title="Configurações">
       <Tabs defaultValue="account">
         <TabsList className="mb-4">
           <TabsTrigger value="account">Minha Conta</TabsTrigger>
@@ -373,10 +377,10 @@ const AdminSettings = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => updateAdminRole({ 
-                                  userId: adminUser.id, 
-                                  role: adminUser.role === 'admin' ? 'staff' : 'admin'
-                                })}
+                                onClick={() => handleRoleUpdate(
+                                  adminUser.id, 
+                                  adminUser.role === 'admin' ? 'staff' : 'admin'
+                                )}
                               >
                                 {adminUser.role === 'admin' ? 'Rebaixar' : 'Promover'}
                               </Button>
