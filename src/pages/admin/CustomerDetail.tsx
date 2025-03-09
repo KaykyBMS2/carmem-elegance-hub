@@ -1,186 +1,208 @@
 
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, User, Mail, Phone, MapPin, Calendar } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Loader2, ChevronLeft, Save, Trash2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+
+// Define customer interface
+interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   
-  const { data: customer, isLoading } = useQuery({
-    queryKey: ['admin-customer', id],
+  // Fetch customer data
+  const { data: customerData, isLoading, error } = useQuery({
+    queryKey: ['customer', id],
     queryFn: async () => {
-      if (!id) throw new Error('ID não fornecido');
-      
-      const { data: customerData, error: customerError } = await supabase
+      const { data, error } = await supabase
         .from('customers')
         .select('*')
         .eq('id', id)
         .single();
-        
-      if (customerError) throw customerError;
       
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('customer_email', customerData.email)
-        .order('created_at', { ascending: false });
-        
-      if (ordersError) throw ordersError;
-      
-      return {
-        ...customerData,
-        orders: orders || []
-      };
-    },
-    enabled: !!id
+      if (error) throw error;
+      return data as Customer;
+    }
   });
+  
+  useEffect(() => {
+    if (customerData) {
+      setCustomer(customerData);
+    }
+  }, [customerData]);
   
   if (isLoading) {
     return (
       <AdminLayout title="Detalhes do Cliente">
-        <div className="flex justify-center p-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
+        <div className="flex h-[calc(100vh-200px)] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
         </div>
       </AdminLayout>
     );
   }
   
-  if (!customer) {
+  if (error || !customer) {
     return (
-      <AdminLayout title="Cliente não encontrado">
-        <div className="flex flex-col items-center justify-center p-12">
-          <p className="mb-4 text-muted-foreground">O cliente solicitado não foi encontrado ou não existe.</p>
-          <Button onClick={() => navigate('/admin/customers')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para lista de clientes
+      <AdminLayout title="Detalhes do Cliente">
+        <div className="mt-8 text-center">
+          <p className="text-lg text-muted-foreground">Cliente não encontrado ou erro ao carregar dados.</p>
+          <Button 
+            variant="outline"
+            className="mt-4"
+            onClick={() => navigate('/admin/customers')}
+          >
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Voltar para Clientes
           </Button>
         </div>
       </AdminLayout>
     );
   }
   
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, string> = {
-      'pending': 'Pendente',
-      'processing': 'Em processamento',
-      'shipped': 'Enviado',
-      'delivered': 'Entregue',
-      'canceled': 'Cancelado',
-    };
-    
-    return statusMap[status] || status;
-  };
+  // Criar um component para ações
+  const CustomerActions = () => (
+    <div className="flex gap-2">
+      <Button variant="outline" onClick={() => navigate('/admin/customers')}>
+        <ChevronLeft className="mr-2 h-4 w-4" />
+        Voltar
+      </Button>
+    </div>
+  );
   
   return (
-    <AdminLayout 
-      title="Detalhes do Cliente"
-      actions={
-        <Button variant="outline" onClick={() => navigate('/admin/customers')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
-      }
-    >
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Informações Pessoais</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{customer.name}</span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">{customer.email}</span>
-            </div>
-            
-            {customer.phone && (
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{customer.phone}</span>
-              </div>
-            )}
-            
-            {(customer.address || customer.city || customer.state) && (
-              <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  {customer.address && <div>{customer.address}</div>}
-                  {(customer.city || customer.state) && (
-                    <div>
-                      {customer.city && customer.city}
-                      {customer.city && customer.state && ', '}
-                      {customer.state && customer.state}
-                    </div>
-                  )}
-                  {customer.postal_code && <div>CEP: {customer.postal_code}</div>}
-                </div>
-              </div>
-            )}
-            
-            <Separator />
-            
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">
-                Cliente desde: {format(new Date(customer.created_at), 'dd/MM/yyyy', { locale: pt })}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+    <AdminLayout title={`Cliente: ${customer.name}`}>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <p className="text-muted-foreground">
+            Cadastrado em {format(new Date(customer.created_at), 'dd/MM/yyyy', { locale: pt })}
+          </p>
+        </div>
+        <CustomerActions />
+      </div>
+      
+      <div className="space-y-6 rounded-lg border p-6 shadow-sm">
+        <div className="grid gap-6 md:grid-cols-2">
+          <div>
+            <Label htmlFor="name">Nome</Label>
+            <Input 
+              id="name" 
+              value={customer.name} 
+              readOnly={!isEditing} 
+              className={!isEditing ? "bg-muted" : ""}
+              onChange={(e) => setCustomer({...customer, name: e.target.value})}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input 
+              id="email" 
+              type="email" 
+              value={customer.email} 
+              readOnly={!isEditing}
+              className={!isEditing ? "bg-muted" : ""} 
+              onChange={(e) => setCustomer({...customer, email: e.target.value})}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="phone">Telefone</Label>
+            <Input 
+              id="phone" 
+              value={customer.phone || ''} 
+              readOnly={!isEditing}
+              className={!isEditing ? "bg-muted" : ""} 
+              onChange={(e) => setCustomer({...customer, phone: e.target.value})}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="address">Endereço</Label>
+            <Input 
+              id="address" 
+              value={customer.address || ''} 
+              readOnly={!isEditing}
+              className={!isEditing ? "bg-muted" : ""} 
+              onChange={(e) => setCustomer({...customer, address: e.target.value})}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="city">Cidade</Label>
+            <Input 
+              id="city" 
+              value={customer.city || ''} 
+              readOnly={!isEditing}
+              className={!isEditing ? "bg-muted" : ""} 
+              onChange={(e) => setCustomer({...customer, city: e.target.value})}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="state">Estado</Label>
+            <Input 
+              id="state" 
+              value={customer.state || ''} 
+              readOnly={!isEditing}
+              className={!isEditing ? "bg-muted" : ""} 
+              onChange={(e) => setCustomer({...customer, state: e.target.value})}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="postal_code">CEP</Label>
+            <Input 
+              id="postal_code" 
+              value={customer.postal_code || ''} 
+              readOnly={!isEditing}
+              className={!isEditing ? "bg-muted" : ""} 
+              onChange={(e) => setCustomer({...customer, postal_code: e.target.value})}
+            />
+          </div>
+        </div>
         
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Histórico de Pedidos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {customer.orders && customer.orders.length > 0 ? (
-              <div className="space-y-4">
-                {customer.orders.map((order) => (
-                  <div key={order.id} className="flex justify-between rounded-lg border p-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Pedido #{order.id.split('-')[0]}...</span>
-                        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
-                          {getStatusBadge(order.status)}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm', { locale: pt })}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end justify-between">
-                      <div className="font-medium">R$ {order.total_amount.toFixed(2)}</div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 px-2"
-                        onClick={() => navigate(`/admin/orders/${order.id}`)}
-                      >
-                        Ver detalhes
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-                <p>Este cliente ainda não realizou nenhum pedido.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {isEditing ? (
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsEditing(false)}>
+              Cancelar
+            </Button>
+            <Button className="gap-1">
+              <Save className="h-4 w-4" />
+              Salvar
+            </Button>
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditing(true)}
+            >
+              Editar Informações
+            </Button>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

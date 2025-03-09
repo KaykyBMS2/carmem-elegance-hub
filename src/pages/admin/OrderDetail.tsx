@@ -1,288 +1,307 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, User, Mail, Phone } from 'lucide-react';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue 
+} from '@/components/ui/select';
+import { 
+  ChevronLeft, 
+  Loader2, 
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Truck,
+  PackageCheck
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+
+// Types
+interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id: string | null;
+  combo_id: string | null;
+  quantity: number;
+  price: number;
+  is_rental: boolean | null;
+  rental_start_date: string | null;
+  rental_end_date: string | null;
+  product?: {
+    name: string;
+  };
+  combo?: {
+    name: string;
+  };
+}
+
+interface Order {
+  id: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string | null;
+  created_at: string;
+  updated_at: string;
+  status: string;
+  total_amount: number;
+  items?: OrderItem[];
+}
 
 const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<string>('');
+  const [order, setOrder] = useState<Order | null>(null);
+  const [status, setStatus] = useState<string>("");
   
-  const { data: order, isLoading: isOrderLoading } = useQuery({
-    queryKey: ['admin-order', id],
+  const { data: orderData, isLoading, error } = useQuery({
+    queryKey: ['order', id],
     queryFn: async () => {
-      if (!id) throw new Error('ID não fornecido');
-      
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .select('*')
         .eq('id', id)
         .single();
-        
+      
       if (orderError) throw orderError;
       
-      setStatus(orderData.status);
-      
-      const { data: orderItems, error: itemsError } = await supabase
+      const { data: itemsData, error: itemsError } = await supabase
         .from('order_items')
         .select(`
-          id,
-          quantity,
-          price,
-          is_rental,
-          rental_start_date,
-          rental_end_date,
-          product_id,
-          combo_id,
-          products:product_id (name, description),
-          product_combos:combo_id (name, description)
+          *,
+          product:product_id (name),
+          combo:combo_id (name)
         `)
         .eq('order_id', id);
-        
+      
       if (itemsError) throw itemsError;
       
-      return {
-        ...orderData,
-        items: orderItems || []
-      };
-    },
-    enabled: !!id
+      return { ...orderData, items: itemsData } as Order;
+    }
   });
   
+  useEffect(() => {
+    if (orderData) {
+      setOrder(orderData);
+      setStatus(orderData.status);
+    }
+  }, [orderData]);
+
   const updateOrderStatus = useMutation({
     mutationFn: async (newStatus: string) => {
       const { data, error } = await supabase
         .from('orders')
         .update({ status: newStatus })
-        .eq('id', id as string);
-        
+        .eq('id', id)
+        .select()
+        .single();
+      
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['order', id] });
       toast({
-        title: "Status atualizado",
-        description: "O status do pedido foi atualizado com sucesso.",
+        title: 'Status atualizado',
+        description: 'O status do pedido foi atualizado com sucesso.'
       });
-      queryClient.invalidateQueries({ queryKey: ['admin-order', id] });
-      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
     },
     onError: (error) => {
       toast({
-        title: "Erro ao atualizar status",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao atualizar o status do pedido.",
-        variant: "destructive",
+        title: 'Erro ao atualizar status',
+        description: error.message,
+        variant: 'destructive'
       });
     }
   });
   
-  const handleStatusChange = (newStatus: string) => {
-    setStatus(newStatus);
-    updateOrderStatus.mutate(newStatus);
-  };
-  
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string, variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      'pending': { label: 'Pendente', variant: 'outline' },
-      'processing': { label: 'Em processamento', variant: 'secondary' },
-      'shipped': { label: 'Enviado', variant: 'default' },
-      'delivered': { label: 'Entregue', variant: 'default' },
-      'canceled': { label: 'Cancelado', variant: 'destructive' },
-    };
-    
-    return statusMap[status] || { label: status, variant: 'outline' };
-  };
-  
-  if (isOrderLoading) {
+  if (isLoading) {
     return (
       <AdminLayout title="Detalhes do Pedido">
-        <div className="flex justify-center p-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
+        <div className="flex h-[calc(100vh-200px)] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-purple" />
         </div>
       </AdminLayout>
     );
   }
   
-  if (!order) {
+  if (error || !order) {
     return (
-      <AdminLayout title="Pedido não encontrado">
-        <div className="flex flex-col items-center justify-center p-12">
-          <p className="mb-4 text-muted-foreground">O pedido solicitado não foi encontrado ou não existe.</p>
-          <Button onClick={() => navigate('/admin/orders')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para lista de pedidos
+      <AdminLayout title="Detalhes do Pedido">
+        <div className="mt-8 text-center">
+          <p className="text-lg text-muted-foreground">Pedido não encontrado ou erro ao carregar dados.</p>
+          <Button 
+            variant="outline"
+            className="mt-4"
+            onClick={() => navigate('/admin/orders')}
+          >
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Voltar para Pedidos
           </Button>
         </div>
       </AdminLayout>
     );
   }
   
-  const statusInfo = getStatusBadge(order.status);
+  // Componente para ações
+  const OrderActions = () => (
+    <div className="flex gap-2">
+      <Button variant="outline" onClick={() => navigate('/admin/orders')}>
+        <ChevronLeft className="mr-2 h-4 w-4" />
+        Voltar
+      </Button>
+    </div>
+  );
+
+  // Função para renderizar o ícone de status
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Clock className="h-5 w-5 text-yellow-500" />;
+      case 'processing':
+        return <RefreshCw className="h-5 w-5 text-blue-500" />;
+      case 'shipped':
+        return <Truck className="h-5 w-5 text-purple-500" />;
+      case 'delivered':
+        return <PackageCheck className="h-5 w-5 text-green-500" />;
+      case 'completed':
+        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+      case 'cancelled':
+        return <AlertCircle className="h-5 w-5 text-red-500" />;
+      default:
+        return <Clock className="h-5 w-5 text-gray-500" />;
+    }
+  };
   
   return (
-    <AdminLayout 
-      title={`Pedido #${order.id.split('-')[0]}...`}
-      actions={
-        <Button variant="outline" onClick={() => navigate('/admin/orders')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
-      }
-    >
+    <AdminLayout title={`Pedido #${order.id.substring(0, 8)}`}>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <p className="text-muted-foreground">
+            Realizado em {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm', { locale: pt })}
+          </p>
+        </div>
+        <OrderActions />
+      </div>
+      
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Itens do Pedido</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {order.items.map((item) => {
-                const itemName = item.products?.name || item.product_combos?.name || 'Item';
-                const itemDescription = item.products?.description || item.product_combos?.description || '';
-                
-                return (
-                  <div key={item.id} className="flex justify-between gap-4 rounded-lg border p-4">
-                    <div className="flex-grow">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium">{itemName}</h4>
-                        <p className="font-semibold">R$ {(item.price * item.quantity).toFixed(2)}</p>
-                      </div>
-                      
-                      <p className="mt-1 text-sm text-muted-foreground">{itemDescription}</p>
-                      
-                      <div className="mt-3 flex flex-wrap items-center gap-3">
-                        <Badge variant="outline" className="text-xs">
-                          Qtd: {item.quantity}
-                        </Badge>
-                        
-                        <Badge variant="outline" className="text-xs">
-                          Preço unitário: R$ {item.price.toFixed(2)}
-                        </Badge>
-                        
-                        {item.is_rental && (
-                          <Badge className="bg-brand-purple/20 text-xs text-brand-purple">
-                            Aluguel
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      {item.is_rental && item.rental_start_date && item.rental_end_date && (
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          <span>Período: </span>
-                          <span>
-                            {format(new Date(item.rental_start_date), 'dd/MM/yyyy', { locale: pt })} até {' '}
-                            {format(new Date(item.rental_end_date), 'dd/MM/yyyy', { locale: pt })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              
-              {order.items.length === 0 && (
-                <div className="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
-                  Nenhum item encontrado neste pedido
-                </div>
-              )}
-              
-              <Separator className="my-4" />
-              
-              <div className="flex justify-between py-2 text-sm">
-                <span>Subtotal</span>
-                <span>R$ {order.total_amount.toFixed(2)}</span>
-              </div>
-              
-              <div className="flex justify-between py-2 text-sm">
-                <span>Frete</span>
-                <span>R$ 0.00</span>
-              </div>
-              
-              <Separator className="my-2" />
-              
-              <div className="flex justify-between py-2 font-semibold">
-                <span>Total</span>
-                <span>R$ {order.total_amount.toFixed(2)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6 rounded-lg border p-6 shadow-sm md:col-span-2">
+          <div>
+            <h3 className="mb-2 text-lg font-medium">Itens do Pedido</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Qtd</TableHead>
+                  <TableHead className="text-right">Preço</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {order.items && order.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      {item.product ? item.product.name : item.combo ? item.combo.name : 'Item indisponível'}
+                    </TableCell>
+                    <TableCell className="text-right">{item.quantity}</TableCell>
+                    <TableCell className="text-right">
+                      R$ {item.price.toFixed(2).replace('.', ',')}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right font-medium">
+                    Total do Pedido
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    R$ {order.total_amount.toFixed(2).replace('.', ',')}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </div>
         
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Status do Pedido</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Status atual:</span>
-                <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
-              </div>
-              
-              <Select value={status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Alterar status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                  <SelectItem value="processing">Em processamento</SelectItem>
-                  <SelectItem value="shipped">Enviado</SelectItem>
-                  <SelectItem value="delivered">Entregue</SelectItem>
-                  <SelectItem value="canceled">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <div className="text-xs text-muted-foreground">
-                <p>Pedido criado em:</p>
-                <p className="font-medium">
-                  {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm', { locale: pt })}
-                </p>
-              </div>
-              
-              <div className="text-xs text-muted-foreground">
-                <p>Última atualização:</p>
-                <p className="font-medium">
-                  {format(new Date(order.updated_at), 'dd/MM/yyyy HH:mm', { locale: pt })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Dados do Cliente</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{order.customer_name}</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{order.customer_email}</span>
-              </div>
-              
+          <div className="rounded-lg border p-6 shadow-sm">
+            <h3 className="mb-4 text-lg font-medium">Informações do Cliente</h3>
+            <div className="space-y-2">
+              <p><span className="font-medium">Nome:</span> {order.customer_name}</p>
+              <p><span className="font-medium">Email:</span> {order.customer_email}</p>
               {order.customer_phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{order.customer_phone}</span>
-                </div>
+                <p><span className="font-medium">Telefone:</span> {order.customer_phone}</p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+          
+          <div className="rounded-lg border p-6 shadow-sm">
+            <h3 className="mb-4 text-lg font-medium">Status do Pedido</h3>
+            <div className="mb-4 flex items-center gap-2">
+              {getStatusIcon(order.status)}
+              <span className="font-medium">
+                {order.status === 'pending' && 'Pendente'}
+                {order.status === 'processing' && 'Em processamento'}
+                {order.status === 'shipped' && 'Enviado'}
+                {order.status === 'delivered' && 'Entregue'}
+                {order.status === 'completed' && 'Concluído'}
+                {order.status === 'cancelled' && 'Cancelado'}
+              </span>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Atualizar status:</p>
+              <div className="flex gap-2">
+                <Select 
+                  value={status} 
+                  onValueChange={setStatus}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Selecione um status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="processing">Em processamento</SelectItem>
+                    <SelectItem value="shipped">Enviado</SelectItem>
+                    <SelectItem value="delivered">Entregue</SelectItem>
+                    <SelectItem value="completed">Concluído</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button 
+                  size="sm" 
+                  disabled={status === order.status || updateOrderStatus.isPending}
+                  onClick={() => updateOrderStatus.mutate(status)}
+                >
+                  {updateOrderStatus.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Atualizar'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </AdminLayout>
