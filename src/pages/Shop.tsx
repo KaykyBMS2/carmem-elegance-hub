@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Filter, ShoppingBag, SlidersHorizontal, ChevronDown, Search } from 'lucide-react';
@@ -122,8 +121,22 @@ const Shop = () => {
         });
         break;
       case 'newest':
-        // In a real app, you would sort by date
-        result.sort((a, b) => b.id - a.id);
+        // We can't directly subtract IDs if they might be strings
+        // Instead, use a safer comparison method
+        result.sort((a, b) => {
+          // If IDs are numeric strings, convert them to numbers for comparison
+          // Otherwise, compare them as strings
+          const idA = typeof a.id === 'number' ? a.id : String(a.id);
+          const idB = typeof b.id === 'number' ? b.id : String(b.id);
+          
+          // For numeric comparison (assuming newer items have higher IDs)
+          if (typeof idA === 'number' && typeof idB === 'number') {
+            return idB - idA; // Descending order
+          }
+          
+          // For string comparison (lexicographical)
+          return String(idB).localeCompare(String(idA));
+        });
         break;
       default: // featured - no specific sorting
         break;
