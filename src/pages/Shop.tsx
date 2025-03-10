@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Filter, ShoppingBag, SlidersHorizontal, ChevronDown, Search } from 'lucide-react';
@@ -72,7 +73,10 @@ const Shop = () => {
         });
         return [];
       }
-    }
+    },
+    // Remove any auth dependencies to ensure products load for all users
+    refetchOnWindowFocus: false,
+    staleTime: 60000, // 1 minute
   });
 
   // Filter products based on search, category, price

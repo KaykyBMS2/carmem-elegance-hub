@@ -1,92 +1,76 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Heart, ChevronRight, ArrowLeft, Check, Info } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { ProductProps } from '@/components/ProductCard';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [product, setProduct] = useState<ProductProps | null>(null);
-  const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'details' | 'reviews'>('description');
   
-  // Fetch product data
-  useEffect(() => {
-    const fetchProduct = async () => {
+  // Fetch product data from Supabase
+  const { data: product, isLoading, error } = useQuery({
+    queryKey: ['product', id],
+    queryFn: async () => {
       try {
-        // This would be an API call in a real app
-        // Mocking data for demonstration
-        const mockProducts: ProductProps[] = [
-          {
-            id: 1,
-            name: "Vestido Serena",
-            description: "Elegante vestido para ensaio fotográfico, com detalhes em renda e cauda longa. Confeccionado em tecido de alta qualidade que valoriza a silhueta e garante conforto durante o ensaio. Ideal para sessões fotográficas em ambientes externos ou estúdio.",
-            price: 450,
-            rentalPrice: 30,
-            image: "https://images.unsplash.com/photo-1623930106258-56b562a917d0?q=80&w=2574&auto=format&fit=crop",
-            category: "Vestidos",
-            isRental: true,
-            rentalIncludes: ["Vestido", "Coroa", "Terço", "Urso", "Sutiã"]
-          },
-          {
-            id: 2,
-            name: "Vestido Aurora",
-            description: "Vestido fluido com mangas transparentes e bordados artesanais. Feito com tecido delicado que proporciona movimento e leveza nas fotografias. Os detalhes em bordado valorizam a peça, criando uma estética única e sofisticada.",
-            price: 550,
-            rentalPrice: 30,
-            image: "https://images.unsplash.com/photo-1582616698198-f978da534162?q=80&w=2592&auto=format&fit=crop",
-            category: "Vestidos",
-            isRental: true,
-            rentalIncludes: ["Vestido", "Coroa", "Terço", "Urso", "Sutiã"]
-          },
-          {
-            id: 5,
-            name: "Vestido Angelina",
-            description: "Vestido longo com tule e rendas aplicadas, perfeito para ensaios ao ar livre. A combinação de diferentes texturas cria um visual romântico e delicado, ideal para fotos em ambientes naturais como jardins e campos.",
-            price: 570,
-            rentalPrice: 30,
-            image: "https://images.unsplash.com/photo-1531214159280-079b95d26139?q=80&w=2670&auto=format&fit=crop",
-            category: "Vestidos",
-            isRental: true,
-            rentalIncludes: ["Vestido", "Coroa", "Terço", "Urso", "Sutiã"]
-          }
-        ];
+        const { data: productData, error: productError } = await supabase
+          .from('products')
+          .select(`
+            *,
+            product_images(*),
+            product_sizes(*)
+          `)
+          .eq('id', id)
+          .single();
+          
+        if (productError) throw productError;
         
-        const foundProduct = mockProducts.find(p => p.id === Number(id));
-        if (foundProduct) {
-          setProduct(foundProduct);
-        } else {
-          // Product not found, redirect to shop
-          navigate('/shop');
-          toast({
-            title: "Produto não encontrado",
-            description: "O produto que você está procurando não existe ou foi removido.",
-            variant: "destructive"
-          });
+        if (!productData) {
+          throw new Error('Product not found');
         }
-        setLoading(false);
+        
+        // Transform to ProductProps
+        const transformedProduct: ProductProps = {
+          id: productData.id,
+          name: productData.name,
+          description: productData.description || '',
+          price: productData.regular_price,
+          rentalPrice: productData.rental_price,
+          image: productData.product_images && productData.product_images.length > 0
+            ? productData.product_images[0].image_url
+            : "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop",
+          category: "Vestidos", // Default category, would need to fetch from joined table
+          isRental: productData.is_rental || false,
+          rentalIncludes: ["Vestido", "Coroa", "Terço", "Urso", "Sutiã"] // Default includes
+        };
+        
+        return transformedProduct;
       } catch (error) {
         console.error('Error fetching product:', error);
-        setLoading(false);
-        toast({
-          title: "Erro ao carregar produto",
-          description: "Não foi possível carregar os detalhes do produto. Por favor, tente novamente.",
-          variant: "destructive"
-        });
+        throw error;
       }
-    };
-    
-    if (id) {
-      fetchProduct();
+    },
+  });
+  
+  // Handle errors
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Produto não encontrado",
+        description: "O produto que você está procurando não existe ou foi removido.",
+        variant: "destructive"
+      });
+      navigate('/shop');
     }
-  }, [id, navigate]);
+  }, [error, navigate]);
   
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite);
@@ -115,7 +99,7 @@ const ProductDetail = () => {
     });
   };
   
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />

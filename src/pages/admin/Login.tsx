@@ -1,10 +1,9 @@
-
-import { useState, FormEvent, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, FormEvent, useEffect } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { AuthContext } from '@/App';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -12,13 +11,14 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated, isAdmin } = useAuth();
 
+  // Check if user is already authenticated and redirect
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/admin/dashboard');
+    if (isAuthenticated && isAdmin) {
+      navigate('/admin/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isAdmin, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -65,6 +65,11 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  // If user is already authenticated as admin, redirect
+  if (isAuthenticated && isAdmin) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50">

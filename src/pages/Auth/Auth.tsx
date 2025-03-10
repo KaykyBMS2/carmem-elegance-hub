@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Login from './Login';
 import Register from './Register';
@@ -8,9 +8,17 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Auth = () => {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
+  const navigate = useNavigate();
 
   // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/profile', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  // If the user is already authenticated, redirect them
   if (isAuthenticated) {
     return <Navigate to="/profile" replace />;
   }
