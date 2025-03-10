@@ -1,26 +1,72 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Heart, ChevronRight, ArrowLeft, Check, Info } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { ShoppingBag, Heart, ChevronRight, ArrowLeft, Check, Info, Star, Send } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { ProductProps } from '@/components/ProductCard';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+
+interface ProductSize {
+  id: string;
+  product_id: string;
+  size: string;
+  is_universal: boolean;
+}
+
+interface ProductDetail {
+  material?: string;
+  color?: string;
+  duration?: string;
+  size_info?: string;
+  care_instructions?: string;
+  available_sizes?: string[];
+}
+
+interface Review {
+  id: string;
+  product_id: string;
+  user_id: string;
+  user_name: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
+interface RelatedProduct {
+  id: string;
+  name: string;
+  image: string;
+  regular_price: number;
+  rental_price: number | null;
+  is_rental: boolean;
+}
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  
   const [isFavorite, setIsFavorite] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'details' | 'reviews'>('description');
+  const [reviewText, setReviewText] = useState('');
+  const [rating, setRating] = useState(5);
   
   // Fetch product data from Supabase
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', id],
     queryFn: async () => {
       try {
+        console.log("Fetching product with ID:", id);
+        
         const { data: productData, error: productError } = await supabase
           .from('products')
           .select(`
@@ -31,14 +77,20 @@ const ProductDetail = () => {
           .eq('id', id)
           .single();
           
-        if (productError) throw productError;
+        if (productError) {
+          console.error("Error fetching product:", productError);
+          throw productError;
+        }
         
         if (!productData) {
+          console.error("Product not found");
           throw new Error('Product not found');
         }
         
+        console.log("Product data:", productData);
+        
         // Transform to ProductProps
-        const transformedProduct: ProductProps = {
+        const transformedProduct: ProductProps & {details?: ProductDetail, sizes?: ProductSize[]} = {
           id: productData.id,
           name: productData.name,
           description: productData.description || '',
@@ -49,7 +101,16 @@ const ProductDetail = () => {
             : "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop",
           category: "Vestidos", // Default category, would need to fetch from joined table
           isRental: productData.is_rental || false,
-          rentalIncludes: ["Vestido", "Coroa", "Terço", "Urso", "Sutiã"] // Default includes
+          rentalIncludes: ["Vestido", "Coroa", "Terço", "Urso", "Sutiã"], // Default includes
+          sizes: productData.product_sizes || [],
+          details: {
+            material: productData.material || 'Algodão, Poliéster',
+            color: productData.color || 'Diversos',
+            duration: productData.is_rental ? '3 dias' : 'N/A',
+            available_sizes: productData.product_sizes ? productData.product_sizes.map((size: ProductSize) => size.size) : ['PP', 'P', 'M', 'G', 'GG'],
+            care_instructions: productData.care_instructions || 'Lavar à mão',
+            size_info: productData.size_info || 'Medidas aproximadas'
+          }
         };
         
         return transformedProduct;
@@ -58,6 +119,138 @@ const ProductDetail = () => {
         throw error;
       }
     },
+  });
+  
+  // Fetch reviews
+  const { data: reviews = [], refetch: refetchReviews } = useQuery({
+    queryKey: ['reviews', id],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('product_reviews')
+          .select('*, user_profiles(name)')
+          .eq('product_id', id)
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        return data.map((review: any) => ({
+          id: review.id,
+          product_id: review.product_id,
+          user_id: review.user_id,
+          user_name: review.user_profiles?.name || 'Usuário anônimo',
+          rating: review.rating,
+          comment: review.comment,
+          created_at: review.created_at
+        }));
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+        return [];
+      }
+    },
+    enabled: !!id
+  });
+  
+  // Fetch related products (products with same tags)
+  const { data: relatedProducts = [] } = useQuery({
+    queryKey: ['related-products', id],
+    queryFn: async () => {
+      try {
+        // First get the product's tags
+        const { data: productTags } = await supabase
+          .from('product_tags')
+          .select('tag_id')
+          .eq('product_id', id);
+          
+        if (!productTags || productTags.length === 0) return [];
+        
+        const tagIds = productTags.map(pt => pt.tag_id);
+        
+        // Then find other products with the same tags
+        const { data: relatedProductIds } = await supabase
+          .from('product_tags')
+          .select('product_id')
+          .in('tag_id', tagIds)
+          .neq('product_id', id) // Exclude the current product
+          .limit(4);
+          
+        if (!relatedProductIds || relatedProductIds.length === 0) return [];
+        
+        // Finally get the details of these related products
+        const relatedIds = [...new Set(relatedProductIds.map(rp => rp.product_id))]; // Remove duplicates
+        
+        const { data: relatedProductsData } = await supabase
+          .from('products')
+          .select(`
+            id, 
+            name, 
+            regular_price, 
+            rental_price, 
+            is_rental,
+            product_images(image_url)
+          `)
+          .in('id', relatedIds)
+          .limit(4);
+          
+        if (!relatedProductsData) return [];
+        
+        return relatedProductsData.map((prod: any) => ({
+          id: prod.id,
+          name: prod.name,
+          regular_price: prod.regular_price,
+          rental_price: prod.rental_price,
+          is_rental: prod.is_rental,
+          image: prod.product_images && prod.product_images.length > 0
+            ? prod.product_images[0].image_url
+            : "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop"
+        }));
+      } catch (error) {
+        console.error('Error fetching related products:', error);
+        return [];
+      }
+    },
+    enabled: !!id
+  });
+  
+  // Add review mutation
+  const addReviewMutation = useMutation({
+    mutationFn: async (newReview: { 
+      product_id: string, 
+      rating: number, 
+      comment: string 
+    }) => {
+      if (!user) throw new Error('User must be logged in to leave a review');
+      
+      const { data, error } = await supabase
+        .from('product_reviews')
+        .insert({
+          product_id: newReview.product_id,
+          user_id: user.id,
+          rating: newReview.rating,
+          comment: newReview.comment
+        })
+        .select();
+        
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      // Clear form and refetch reviews
+      setReviewText('');
+      refetchReviews();
+      
+      toast({
+        title: 'Avaliação enviada',
+        description: 'Obrigado por compartilhar sua opinião sobre este produto.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao enviar avaliação',
+        description: error.message || 'Ocorreu um erro. Tente novamente mais tarde.',
+        variant: 'destructive'
+      });
+    }
   });
   
   // Handle errors
@@ -99,12 +292,38 @@ const ProductDetail = () => {
     });
   };
   
+  const handleSubmitReview = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Faça login para avaliar",
+        description: "É necessário estar logado para deixar uma avaliação.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!reviewText.trim()) {
+      toast({
+        title: "Avaliação vazia",
+        description: "Por favor, escreva algo sobre o produto.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    addReviewMutation.mutate({
+      product_id: id || '',
+      rating,
+      comment: reviewText
+    });
+  };
+  
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-grow pt-24 flex items-center justify-center">
-          <div className="loader"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-purple"></div>
         </main>
         <Footer />
       </div>
@@ -197,11 +416,11 @@ const ProductDetail = () => {
               )}
               
               {/* Sizes */}
-              {product.isRental && (
+              {product.isRental && product.details?.available_sizes && (
                 <div>
                   <h3 className="text-lg font-medium mb-4">Selecione o tamanho:</h3>
                   <div className="flex flex-wrap gap-3">
-                    {['PP', 'P', 'M', 'G', 'GG'].map((size) => (
+                    {product.details.available_sizes.map((size) => (
                       <button
                         key={size}
                         onClick={() => setSelectedSize(size)}
@@ -305,21 +524,21 @@ const ProductDetail = () => {
                         <div className="glass-card p-4 rounded-lg">
                           <h4 className="text-sm font-medium mb-1">Material</h4>
                           <p className="text-sm text-muted-foreground">
-                            {product.isRental ? 'Renda, Tule, Cetim' : 'Algodão, Poliéster'}
+                            {product.details?.material || 'Não especificado'}
                           </p>
                         </div>
                         
                         <div className="glass-card p-4 rounded-lg">
                           <h4 className="text-sm font-medium mb-1">Cor</h4>
                           <p className="text-sm text-muted-foreground">
-                            {product.isRental ? 'Branco, Off-white' : 'Diversos'}
+                            {product.details?.color || 'Não especificado'}
                           </p>
                         </div>
                         
                         <div className="glass-card p-4 rounded-lg">
                           <h4 className="text-sm font-medium mb-1">Tamanhos disponíveis</h4>
                           <p className="text-sm text-muted-foreground">
-                            PP, P, M, G, GG
+                            {product.details?.available_sizes?.join(', ') || 'Não especificado'}
                           </p>
                         </div>
                         
@@ -328,7 +547,14 @@ const ProductDetail = () => {
                             {product.isRental ? 'Período de aluguel' : 'Garantia'}
                           </h4>
                           <p className="text-sm text-muted-foreground">
-                            {product.isRental ? '3 dias' : '30 dias'}
+                            {product.isRental ? product.details?.duration || '3 dias' : '30 dias'}
+                          </p>
+                        </div>
+                        
+                        <div className="glass-card p-4 rounded-lg col-span-2">
+                          <h4 className="text-sm font-medium mb-1">Instruções de cuidado</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {product.details?.care_instructions || 'Não especificado'}
                           </p>
                         </div>
                       </div>
@@ -343,73 +569,96 @@ const ProductDetail = () => {
                           <div className="flex items-center mt-1">
                             <div className="flex">
                               {[1, 2, 3, 4, 5].map((star) => (
-                                <svg 
+                                <Star 
                                   key={star}
                                   className="h-5 w-5 text-yellow-400" 
-                                  fill="currentColor" 
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
+                                  fill={reviews.length > 0 ? "currentColor" : "none"}
+                                />
                               ))}
                             </div>
-                            <span className="ml-2 text-sm text-muted-foreground">4.9 (45 avaliações)</span>
+                            <span className="ml-2 text-sm text-muted-foreground">
+                              {reviews.length > 0 
+                                ? `${(reviews.reduce((acc, rev) => acc + rev.rating, 0) / reviews.length).toFixed(1)} (${reviews.length} avaliações)` 
+                                : 'Seja o primeiro a avaliar'}
+                            </span>
                           </div>
                         </div>
-                        
-                        <button className="button-secondary text-sm">Escrever avaliação</button>
                       </div>
                       
+                      {/* Add review */}
+                      <div className="glass-card p-6 rounded-xl">
+                        <h4 className="font-medium mb-3">Deixe sua avaliação</h4>
+                        <div className="mb-3">
+                          <div className="flex items-center">
+                            <div className="flex mb-2">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button 
+                                  key={star}
+                                  onClick={() => setRating(star)}
+                                  className="focus:outline-none"
+                                >
+                                  <Star 
+                                    className="h-6 w-6 text-yellow-400" 
+                                    fill={star <= rating ? "currentColor" : "none"}
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                            <span className="ml-2 text-sm text-muted-foreground">{rating} de 5 estrelas</span>
+                          </div>
+                        </div>
+                        <Textarea 
+                          placeholder="Compartilhe sua experiência com o produto..." 
+                          className="mb-3"
+                          value={reviewText}
+                          onChange={(e) => setReviewText(e.target.value)}
+                        />
+                        <Button 
+                          onClick={handleSubmitReview}
+                          disabled={addReviewMutation.isPending || !reviewText.trim()}
+                          className="flex items-center"
+                        >
+                          {addReviewMutation.isPending 
+                            ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div> 
+                            : <Send className="h-4 w-4 mr-2" />}
+                          Enviar avaliação
+                        </Button>
+                      </div>
+                      
+                      {/* Reviews list */}
                       <div className="space-y-6">
-                        {/* Review 1 */}
-                        <div className="glass-card p-6 rounded-xl">
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
-                              <h4 className="font-medium">Maria S.</h4>
-                              <div className="flex mt-1">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <svg 
-                                    key={star}
-                                    className="h-4 w-4 text-yellow-400" 
-                                    fill="currentColor" 
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                  </svg>
-                                ))}
+                        {reviews.length > 0 ? (
+                          reviews.map((review) => (
+                            <div key={review.id} className="glass-card p-6 rounded-xl">
+                              <div className="flex items-start justify-between mb-4">
+                                <div>
+                                  <h4 className="font-medium">{review.user_name}</h4>
+                                  <div className="flex mt-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <Star 
+                                        key={star}
+                                        className={`h-4 w-4 ${star <= review.rating ? 'text-yellow-400' : 'text-gray-300'}`} 
+                                        fill="currentColor"
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                <span className="text-sm text-muted-foreground">
+                                  {new Date(review.created_at).toLocaleDateString('pt-BR', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </span>
                               </div>
+                              <p className="text-muted-foreground text-sm">{review.comment}</p>
                             </div>
-                            <span className="text-sm text-muted-foreground">2 semanas atrás</span>
+                          ))
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            Ainda não há avaliações para este produto.
                           </div>
-                          <p className="text-muted-foreground text-sm">
-                            "Amei o vestido! Ele ficou perfeito nas fotos e o atendimento foi excelente. Com certeza vou alugar novamente para as próximas sessões."
-                          </p>
-                        </div>
-                        
-                        {/* Review 2 */}
-                        <div className="glass-card p-6 rounded-xl">
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
-                              <h4 className="font-medium">Ana P.</h4>
-                              <div className="flex mt-1">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <svg 
-                                    key={star}
-                                    className={`h-4 w-4 ${star <= 4 ? 'text-yellow-400' : 'text-gray-300'}`} 
-                                    fill="currentColor" 
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                  </svg>
-                                ))}
-                              </div>
-                            </div>
-                            <span className="text-sm text-muted-foreground">1 mês atrás</span>
-                          </div>
-                          <p className="text-muted-foreground text-sm">
-                            "O vestido é lindo, mas precisei de alguns ajustes. A equipe foi muito prestativa e conseguiu fazer tudo a tempo para o meu ensaio. O resultado ficou incrível!"
-                          </p>
-                        </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -417,6 +666,41 @@ const ProductDetail = () => {
               </div>
             </div>
           </div>
+          
+          {/* Related Products */}
+          {relatedProducts.length > 0 && (
+            <div className="mt-16">
+              <h2 className="text-2xl font-montserrat font-semibold mb-8">Produtos relacionados</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {relatedProducts.map((related) => (
+                  <div key={related.id} className="glass-card rounded-xl overflow-hidden transition-transform hover:scale-102">
+                    <div className="relative aspect-[3/4] overflow-hidden">
+                      <img src={related.image} alt={related.name} className="w-full h-full object-cover" />
+                      {related.is_rental && (
+                        <div className="absolute top-3 left-3 bg-brand-purple text-white text-xs px-2 py-1 rounded-full">
+                          Aluguel
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-medium mb-1 line-clamp-1">{related.name}</h3>
+                      <div className="text-brand-purple font-semibold">
+                        {related.is_rental && related.rental_price 
+                          ? `R$ ${related.rental_price.toFixed(2)}` 
+                          : `R$ ${related.regular_price.toFixed(2)}`}
+                      </div>
+                      <button 
+                        onClick={() => navigate(`/product/${related.id}`)}
+                        className="w-full mt-3 py-2 text-center text-sm bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        Ver detalhes
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
       

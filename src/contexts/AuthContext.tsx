@@ -1,3 +1,4 @@
+
 import { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -80,6 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Listen for auth changes
       const { data: { subscription } } = await supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log("Auth state changed:", event, session?.user?.id);
         if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user);
           await checkUserType(session.user.id);
@@ -106,56 +108,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   // Check if user is admin or customer
   const checkUserType = async (userId: string) => {
-    // Check if admin
-    const { data: adminData } = await supabase
-      .from('admin_users')
-      .select('role')
-      .eq('id', userId)
-      .single();
-    
-    setIsAdmin(!!adminData);
-    
-    // Check if customer
-    const { data: customerData } = await supabase
-      .from('user_profiles')
-      .select('id')
-      .eq('id', userId)
-      .single();
-    
-    setIsCustomer(!!customerData);
+    try {
+      // Check if admin
+      const { data: adminData } = await supabase
+        .from('admin_users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      
+      setIsAdmin(!!adminData);
+      
+      // Check if customer
+      const { data: customerData } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', userId)
+        .single();
+      
+      setIsCustomer(!!customerData);
+      
+      console.log("User type checked:", { isAdmin: !!adminData, isCustomer: !!customerData });
+    } catch (error) {
+      console.error("Error checking user type:", error);
+    }
   };
   
   // Fetch user profile data
   const fetchUserProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (error) {
-      console.error('Error fetching user profile:', error);
-      return;
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return;
+      }
+      
+      setProfile(data as UserProfile);
+      console.log("Profile fetched:", data);
+    } catch (error) {
+      console.error("Error in fetchUserProfile:", error);
     }
-    
-    setProfile(data as UserProfile);
   };
   
   // Fetch user notifications
   const fetchNotifications = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(100);
-    
-    if (error) {
-      console.error('Error fetching notifications:', error);
-      return;
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return;
+      }
+      
+      setNotifications(data as Notification[]);
+    } catch (error) {
+      console.error("Error in fetchNotifications:", error);
     }
-    
-    setNotifications(data as Notification[]);
   };
   
   // Sign up new user

@@ -8,17 +8,25 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Auth = () => {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isLoading && isAuthenticated) {
       navigate('/profile', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, isLoading]);
 
   // If the user is already authenticated, redirect them
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-purple"></div>
+      </div>
+    );
+  }
+
   if (isAuthenticated) {
     return <Navigate to="/profile" replace />;
   }
