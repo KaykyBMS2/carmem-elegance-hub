@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Filter, ShoppingBag, SlidersHorizontal, ChevronDown, Search } from 'lucide-react';
@@ -50,7 +51,7 @@ const Shop = () => {
             : "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop";
 
           return {
-            id: product.id,
+            id: product.id, // This stays as a string now that we've updated the interface
             name: product.name,
             description: product.description || "",
             price: product.regular_price,

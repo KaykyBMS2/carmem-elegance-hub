@@ -4,7 +4,7 @@ import { ShoppingBag, Heart, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export interface ProductProps {
-  id: number;
+  id: string | number; // Updated to accept both string and number
   name: string;
   description: string;
   price: number;
