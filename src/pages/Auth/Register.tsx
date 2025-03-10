@@ -44,10 +44,10 @@ const Register = () => {
     setLoading(true);
     
     try {
-      // Pass user data to signUp method
+      // Pass user data to signUp method with updated profile structure
       const { error } = await signUp(email, password, { 
         name,
-        email, // Ensure email is included in the profile data
+        email,
       });
       
       if (error) throw error;
