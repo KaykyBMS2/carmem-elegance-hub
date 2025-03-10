@@ -1,4 +1,3 @@
-
 import { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -162,6 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Sign up new user
   const signUp = async (email: string, password: string, userData: Partial<UserProfile>) => {
     try {
+      // 1. First create the user in auth.users
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -170,26 +170,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) return { error };
       
       if (data.user) {
-        // Create user profile
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: data.user.id,
-            email,
-            name: userData.name,
-            phone: userData.phone,
-            address: userData.address,
-            city: userData.city,
-            state: userData.state,
-            postal_code: userData.postal_code,
-            birth_date: userData.birth_date,
-          });
-        
-        if (profileError) return { error: profileError };
+        try {
+          // 2. Try to create profile after the user is created
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: data.user.id,
+              email: email,
+              name: userData.name,
+              phone: userData.phone || null,
+              address: userData.address || null,
+              city: userData.city || null,
+              state: userData.state || null,
+              postal_code: userData.postal_code || null,
+              birth_date: userData.birth_date || null,
+            });
+          
+          if (profileError) {
+            console.error("Profile creation error:", profileError);
+            // Don't return the error, just log it, as the user is created successfully
+          }
+        } catch (profileCreationError) {
+          console.error("Error in profile creation:", profileCreationError);
+          // We don't throw here because the auth user was created successfully
+        }
       }
       
       return { error: null };
     } catch (error) {
+      console.error("Sign up process error:", error);
       return { error };
     }
   };

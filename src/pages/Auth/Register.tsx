@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
@@ -44,13 +43,16 @@ const Register = () => {
     setLoading(true);
     
     try {
-      // Pass user data to signUp method with updated profile structure
+      // Pass user data to signUp method with simplified profile structure
       const { error } = await signUp(email, password, { 
-        name,
-        email,
+        name, 
+        email 
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Registration error details:", error);
+        throw error;
+      }
       
       toast({
         title: "Conta criada com sucesso!",
@@ -71,9 +73,12 @@ const Register = () => {
     }
   };
 
+  // ... keep existing code (form JSX and UI components)
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
+        {/* Name input */}
         <div>
           <Label htmlFor="name">Nome completo</Label>
           <div className="relative mt-1">
@@ -92,6 +97,7 @@ const Register = () => {
           </div>
         </div>
         
+        {/* Email input */}
         <div>
           <Label htmlFor="register-email">E-mail</Label>
           <div className="relative mt-1">
@@ -110,6 +116,7 @@ const Register = () => {
           </div>
         </div>
         
+        {/* Password input */}
         <div>
           <Label htmlFor="register-password">Senha</Label>
           <div className="relative mt-1">
@@ -137,6 +144,7 @@ const Register = () => {
           <p className="mt-1 text-xs text-gray-500">A senha deve ter pelo menos 6 caracteres</p>
         </div>
         
+        {/* Confirm password input */}
         <div>
           <Label htmlFor="confirm-password">Confirmar senha</Label>
           <div className="relative mt-1">
@@ -155,6 +163,7 @@ const Register = () => {
           </div>
         </div>
         
+        {/* Terms agreement */}
         <div className="flex items-start">
           <div className="flex items-center h-5">
             <Checkbox 
@@ -179,6 +188,7 @@ const Register = () => {
         </div>
       </div>
       
+      {/* Submit button */}
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? (
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"></div>
@@ -187,6 +197,7 @@ const Register = () => {
         )}
       </Button>
       
+      {/* Login link */}
       <div className="text-center text-sm text-gray-500">
         Já tem uma conta?{" "}
         <button
