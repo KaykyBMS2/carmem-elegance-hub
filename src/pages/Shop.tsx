@@ -1,114 +1,68 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Filter, ShoppingBag, SlidersHorizontal, ChevronDown, Search } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ProductCard, { ProductProps } from '@/components/ProductCard';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Shop = () => {
   const navigate = useNavigate();
-  const [products, setProducts] = useState<ProductProps[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<ProductProps[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
   const [sortOption, setSortOption] = useState('featured');
+  const [categories, setCategories] = useState<string[]>(['all']);
 
-  // Fetch products data (mock data for now)
-  useEffect(() => {
-    const fetchProducts = async () => {
+  // Fetch products from Supabase
+  const { data: products, isLoading: loading, error } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
       try {
-        // This would typically be an API call
-        const mockProducts: ProductProps[] = [
-          {
-            id: 1,
-            name: "Vestido Serena",
-            description: "Elegante vestido para ensaio fotográfico, com detalhes em renda e cauda longa.",
-            price: 450,
-            rentalPrice: 30,
-            image: "https://images.unsplash.com/photo-1623930106258-56b562a917d0?q=80&w=2574&auto=format&fit=crop",
-            category: "Vestidos",
-            isRental: true,
-            rentalIncludes: ["Vestido", "Coroa", "Terço", "Urso", "Sutiã"]
-          },
-          {
-            id: 2,
-            name: "Vestido Aurora",
-            description: "Vestido fluido com mangas transparentes e bordados artesanais.",
-            price: 550,
-            rentalPrice: 30,
-            image: "https://images.unsplash.com/photo-1582616698198-f978da534162?q=80&w=2592&auto=format&fit=crop",
-            category: "Vestidos",
-            isRental: true,
-            rentalIncludes: ["Vestido", "Coroa", "Terço", "Urso", "Sutiã"]
-          },
-          {
-            id: 3,
-            name: "Combo Celestial",
-            description: "Conjunto de 4 vestidos distintos para uma sessão completa.",
-            price: 1200,
-            rentalPrice: 100,
-            image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?q=80&w=2578&auto=format&fit=crop",
-            category: "Combos",
-            isRental: true,
-            rentalIncludes: ["4 Vestidos", "4 Coroas", "Terço", "Urso", "Sutiã", "Lousa"]
-          },
-          {
-            id: 4,
-            name: "Bolsa Maternidade Luxo",
-            description: "Bolsa maternidade em couro ecológico com múltiplos compartimentos e acabamento premium.",
-            price: 280,
-            image: "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?q=80&w=2576&auto=format&fit=crop",
-            category: "Bolsas",
-            isRental: false
-          },
-          {
-            id: 5,
-            name: "Vestido Angelina",
-            description: "Vestido longo com tule e rendas aplicadas, perfeito para ensaios ao ar livre.",
-            price: 570,
-            rentalPrice: 30,
-            image: "https://images.unsplash.com/photo-1531214159280-079b95d26139?q=80&w=2670&auto=format&fit=crop",
-            category: "Vestidos",
-            isRental: true,
-            rentalIncludes: ["Vestido", "Coroa", "Terço", "Urso", "Sutiã"]
-          },
-          {
-            id: 6,
-            name: "Kit Decoração Quarto",
-            description: "Kit completo para decoração de quarto de bebê, com peças coordenadas e estampas exclusivas.",
-            price: 450,
-            image: "https://images.unsplash.com/photo-1586105449897-20b5a1b5aa63?q=80&w=2574&auto=format&fit=crop",
-            category: "Decoração",
-            isRental: false
-          },
-          {
-            id: 7,
-            name: "Naninha Ursinho",
-            description: "Naninha macia e aconchegante, ideal para acalmar o bebê. Feita com tecidos antialérgicos.",
-            price: 75,
-            image: "https://images.unsplash.com/photo-1602407294553-6ac9170b3ed0?q=80&w=2502&auto=format&fit=crop",
-            category: "Brinquedos",
-            isRental: false
-          },
-          {
-            id: 8,
-            name: "Manta Personalizada",
-            description: "Manta de tricô personalizada com o nome do bebê, perfeita para presente ou uso diário.",
-            price: 120,
-            image: "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop",
-            category: "Enxoval",
-            isRental: false
-          }
-        ];
-        
-        setProducts(mockProducts);
-        setFilteredProducts(mockProducts);
-        setLoading(false);
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select(`
+            *,
+            product_images(*)
+          `);
+
+        if (productsError) throw productsError;
+
+        // Get unique categories
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('name');
+
+        if (categoriesError) throw categoriesError;
+
+        if (categoriesData && categoriesData.length > 0) {
+          setCategories(['all', ...categoriesData.map(cat => cat.name)]);
+        }
+
+        // Transform data to match ProductProps
+        const transformedProducts: ProductProps[] = productsData.map(product => {
+          const imageUrl = product.product_images && product.product_images.length > 0
+            ? product.product_images[0].image_url
+            : "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop";
+
+          return {
+            id: product.id,
+            name: product.name,
+            description: product.description || "",
+            price: product.regular_price,
+            rentalPrice: product.rental_price,
+            image: imageUrl,
+            category: "Vestidos", // Default category, would need to fetch from joined table
+            isRental: product.is_rental || false,
+            rentalIncludes: [] // This would require additional data
+          };
+        });
+
+        return transformedProducts;
       } catch (error) {
         console.error('Error fetching products:', error);
         toast({
@@ -116,15 +70,15 @@ const Shop = () => {
           description: "Não foi possível carregar os produtos. Por favor, tente novamente mais tarde.",
           variant: "destructive"
         });
-        setLoading(false);
+        return [];
       }
-    };
-    
-    fetchProducts();
-  }, []);
+    }
+  });
 
   // Filter products based on search, category, price
   useEffect(() => {
+    if (!products) return;
+    
     let result = [...products];
     
     // Filter by category
@@ -176,8 +130,6 @@ const Shop = () => {
     
     setFilteredProducts(result);
   }, [products, selectedCategory, searchQuery, priceRange, sortOption]);
-
-  const categories = ['all', ...new Set(products.map(product => product.category))];
 
   const handleAddToCart = (id: number) => {
     // This would integrate with a cart system

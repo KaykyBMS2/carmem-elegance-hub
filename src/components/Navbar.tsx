@@ -1,16 +1,17 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ShoppingBag, Flower, User } from 'lucide-react';
+import { Menu, X, ShoppingBag, Flower, User, LogIn, Settings, LogOut, UserCircle, Heart } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const isMobile = useIsMobile();
-  const { isAuthenticated, profile } = useAuth();
+  const { isAuthenticated, profile, signOut } = useAuth();
   
   // Handle scrolling effect
   useEffect(() => {
@@ -122,32 +123,91 @@ const Navbar = () => {
               </Link>
             </div>
             
-            {/* User Auth */}
-            {isAuthenticated ? (
-              <Link 
-                to="/profile" 
-                className="ml-4 button-secondary flex items-center group"
+            {/* User Auth - Redesigned */}
+            <div className="ml-4 flex items-center gap-2">
+              {isAuthenticated ? (
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="rounded-full border-brand-purple/30 hover:bg-brand-purple/10 hover:text-brand-purple"
+                    asChild
+                  >
+                    <Link to="/profile/orders">
+                      <Heart className="h-4 w-4 mr-1" />
+                      Pedidos
+                    </Link>
+                  </Button>
+                  <div className="relative group">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="rounded-full border-brand-purple hover:bg-brand-purple/10 hover:text-brand-purple flex items-center gap-1"
+                    >
+                      <UserCircle className="h-4 w-4" />
+                      <span className="max-w-[80px] truncate">{profile?.name || 'Minha Conta'}</span>
+                    </Button>
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg overflow-hidden z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+                      <div className="py-2">
+                        <Link 
+                          to="/profile" 
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-brand-purple/10 hover:text-brand-purple"
+                        >
+                          <User className="h-4 w-4 mr-2" />
+                          <span>Meu Perfil</span>
+                        </Link>
+                        <Link 
+                          to="/profile/orders" 
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-brand-purple/10 hover:text-brand-purple"
+                        >
+                          <Heart className="h-4 w-4 mr-2" />
+                          <span>Meus Pedidos</span>
+                        </Link>
+                        <Link 
+                          to="/profile/notifications" 
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-brand-purple/10 hover:text-brand-purple"
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          <span>Notificações</span>
+                        </Link>
+                        <hr className="my-1" />
+                        <button 
+                          onClick={() => signOut()}
+                          className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          <LogOut className="h-4 w-4 mr-2" />
+                          <span>Sair</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="rounded-full border-brand-purple hover:bg-brand-purple/10 hover:text-brand-purple transition-transform duration-300 hover:scale-105"
+                  asChild
+                >
+                  <Link to="/auth/login" className="flex items-center gap-1">
+                    <LogIn className="h-4 w-4" />
+                    <span>Entrar</span>
+                  </Link>
+                </Button>
+              )}
+              
+              <Button 
+                variant="default" 
+                size="sm"
+                className="rounded-full bg-brand-purple hover:bg-brand-purple/90 transition-transform duration-300 hover:scale-105"
+                asChild
               >
-                <User className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
-                <span>Perfil</span>
-              </Link>
-            ) : (
-              <Link 
-                to="/auth/login" 
-                className="ml-4 button-secondary flex items-center group"
-              >
-                <User className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
-                <span>Entrar</span>
-              </Link>
-            )}
-            
-            <Link 
-              to="/shop" 
-              className="ml-2 button-primary flex items-center group"
-            >
-              <ShoppingBag className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
-              <span>Explorar</span>
-            </Link>
+                <Link to="/shop" className="flex items-center gap-1">
+                  <ShoppingBag className="h-4 w-4" />
+                  <span>Explorar</span>
+                </Link>
+              </Button>
+            </div>
           </div>
         )}
         
@@ -223,20 +283,31 @@ const Navbar = () => {
               Contato
             </Link>
             
-            {/* Auth links for mobile */}
+            {/* Auth links for mobile - Redesigned */}
             {isAuthenticated ? (
-              <Link 
-                to="/profile" 
-                className={`mobile-nav-link ${location.pathname.startsWith('/profile') ? 'text-brand-purple' : ''}`}
-              >
-                Meu Perfil
-              </Link>
+              <>
+                <Link 
+                  to="/profile" 
+                  className="flex items-center gap-2 px-6 py-2 bg-brand-purple/10 rounded-full text-brand-purple font-medium"
+                >
+                  <UserCircle className="h-5 w-5" />
+                  <span>Meu Perfil</span>
+                </Link>
+                <button 
+                  onClick={() => signOut()}
+                  className="flex items-center gap-2 px-6 py-2 bg-red-50 rounded-full text-red-600 font-medium"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span>Sair</span>
+                </button>
+              </>
             ) : (
               <Link 
                 to="/auth/login" 
-                className={`mobile-nav-link ${location.pathname.startsWith('/auth') ? 'text-brand-purple' : ''}`}
+                className="flex items-center gap-2 px-6 py-2 bg-brand-purple/10 rounded-full text-brand-purple font-medium"
               >
-                Entrar
+                <LogIn className="h-5 w-5" />
+                <span>Entrar</span>
               </Link>
             )}
             
