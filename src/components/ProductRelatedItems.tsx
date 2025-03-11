@@ -15,7 +15,7 @@ interface Product {
   regular_price: number;
   sale_price: number | null;
   promotional_price: number | null;
-  primary_image: string | null;
+  primary_image: any;
   is_rental: boolean | null;
   rental_price: number | null;
 }
@@ -113,7 +113,7 @@ const ProductRelatedItems = ({ productId, tags }: ProductRelatedItemsProps) => {
   }
 
   return (
-    <div className="relative">
+    <div className="relative section-padding">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-semibold text-gray-800">Produtos Relacionados</h3>
         <div className="flex space-x-2">
@@ -142,7 +142,7 @@ const ProductRelatedItems = ({ productId, tags }: ProductRelatedItemsProps) => {
         {products.map(product => (
           <div 
             key={product.id} 
-            className="flex-none w-[calc(33.333%-16px)] sm:w-64 md:w-1/3 lg:w-1/4 xl:w-1/5 snap-start"
+            className="flex-none w-[230px] sm:w-[230px] md:w-[230px] lg:w-[230px] snap-start"
           >
             <ProductCard 
               id={product.id}

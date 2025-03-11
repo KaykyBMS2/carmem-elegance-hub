@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,6 @@ const Register = () => {
     setLoading(true);
     
     try {
-      // Pass user data to signUp method with simplified profile structure
       const { error } = await signUp(email, password, { 
         name, 
         email 
@@ -59,8 +59,7 @@ const Register = () => {
         description: "Bem-vinda à Carmem Bezerra. Você pode fazer login agora.",
       });
       
-      // Switch to login tab
-      document.querySelector('[value="login"]')?.dispatchEvent(new MouseEvent('click'));
+      navigate('/auth/login');
     } catch (error: any) {
       console.error('Registration error:', error);
       toast({
@@ -73,142 +72,146 @@ const Register = () => {
     }
   };
 
-  // ... keep existing code (form JSX and UI components)
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-4">
-        {/* Name input */}
-        <div>
-          <Label htmlFor="name">Nome completo</Label>
-          <div className="relative mt-1">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-              <User size={16} />
-            </div>
-            <Input
-              id="name"
-              type="text"
-              placeholder="Seu nome completo"
-              className="pl-10"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-        
-        {/* Email input */}
-        <div>
-          <Label htmlFor="register-email">E-mail</Label>
-          <div className="relative mt-1">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-              <Mail size={16} />
-            </div>
-            <Input
-              id="register-email"
-              type="email"
-              placeholder="seu@email.com"
-              className="pl-10"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-        
-        {/* Password input */}
-        <div>
-          <Label htmlFor="register-password">Senha</Label>
-          <div className="relative mt-1">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-              <Lock size={16} />
-            </div>
-            <Input
-              id="register-password"
-              type={showPassword ? "text" : "password"}
-              className="pl-10 pr-10"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-            <button
-              type="button"
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          <p className="mt-1 text-xs text-gray-500">A senha deve ter pelo menos 6 caracteres</p>
-        </div>
-        
-        {/* Confirm password input */}
-        <div>
-          <Label htmlFor="confirm-password">Confirmar senha</Label>
-          <div className="relative mt-1">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-              <Lock size={16} />
-            </div>
-            <Input
-              id="confirm-password"
-              type={showPassword ? "text" : "password"}
-              className="pl-10"
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-        
-        {/* Terms agreement */}
-        <div className="flex items-start">
-          <div className="flex items-center h-5">
-            <Checkbox 
-              id="agree-terms" 
-              checked={agreeTerms}
-              onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
-              required
-            />
-          </div>
-          <div className="ml-3 text-sm">
-            <label htmlFor="agree-terms" className="text-gray-600">
-              Concordo com os{" "}
-              <a href="#" className="text-brand-purple hover:underline">
-                Termos de Serviço
-              </a>{" "}
-              e{" "}
-              <a href="#" className="text-brand-purple hover:underline">
-                Política de Privacidade
-              </a>
-            </label>
-          </div>
-        </div>
+    <div className="max-w-md mx-auto glass-card p-8 rounded-xl shadow-subtle">
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-montserrat font-bold text-gray-800">Criar Conta</h1>
+        <p className="text-muted-foreground mt-2">Cadastre-se para começar a comprar</p>
       </div>
       
-      {/* Submit button */}
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? (
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"></div>
-        ) : (
-          "Criar conta"
-        )}
-      </Button>
-      
-      {/* Login link */}
-      <div className="text-center text-sm text-gray-500">
-        Já tem uma conta?{" "}
-        <button
-          type="button"
-          className="font-medium text-brand-purple hover:underline"
-          onClick={() => document.querySelector('[value="login"]')?.dispatchEvent(new MouseEvent('click'))}
-        >
-          Faça login
-        </button>
-      </div>
-    </form>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-4">
+          {/* Name input */}
+          <div>
+            <Label htmlFor="name">Nome completo</Label>
+            <div className="relative mt-1">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                <User size={16} />
+              </div>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Seu nome completo"
+                className="pl-10"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          
+          {/* Email input */}
+          <div>
+            <Label htmlFor="register-email">E-mail</Label>
+            <div className="relative mt-1">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                <Mail size={16} />
+              </div>
+              <Input
+                id="register-email"
+                type="email"
+                placeholder="seu@email.com"
+                className="pl-10"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          
+          {/* Password input */}
+          <div>
+            <Label htmlFor="register-password">Senha</Label>
+            <div className="relative mt-1">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                <Lock size={16} />
+              </div>
+              <Input
+                id="register-password"
+                type={showPassword ? "text" : "password"}
+                className="pl-10 pr-10"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">A senha deve ter pelo menos 6 caracteres</p>
+          </div>
+          
+          {/* Confirm password input */}
+          <div>
+            <Label htmlFor="confirm-password">Confirmar senha</Label>
+            <div className="relative mt-1">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                <Lock size={16} />
+              </div>
+              <Input
+                id="confirm-password"
+                type={showPassword ? "text" : "password"}
+                className="pl-10"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          
+          {/* Terms agreement */}
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <Checkbox 
+                id="agree-terms" 
+                checked={agreeTerms}
+                onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
+                required
+              />
+            </div>
+            <div className="ml-3 text-sm">
+              <label htmlFor="agree-terms" className="text-gray-600">
+                Concordo com os{" "}
+                <a href="#" className="text-brand-purple hover:underline">
+                  Termos de Serviço
+                </a>{" "}
+                e{" "}
+                <a href="#" className="text-brand-purple hover:underline">
+                  Política de Privacidade
+                </a>
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        {/* Submit button */}
+        <Button type="submit" className="w-full font-bold" disabled={loading}>
+          {loading ? (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"></div>
+          ) : (
+            "Criar conta"
+          )}
+        </Button>
+        
+        {/* Login link */}
+        <div className="text-center text-sm text-gray-500">
+          Já tem uma conta?{" "}
+          <Link
+            to="/auth/login"
+            className="font-medium text-brand-purple hover:underline"
+          >
+            Faça login
+          </Link>
+        </div>
+      </form>
+    </div>
   );
 };
 

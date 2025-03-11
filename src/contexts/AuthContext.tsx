@@ -72,15 +72,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       try {
         // Check for existing session
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log("Initial session check:", session?.user?.id);
+        const { data } = await supabase.auth.getSession();
+        console.log("Initial session check:", data?.session?.user?.id || "No session");
         
-        if (session?.user) {
-          setUser(session.user);
-          setSession(session);
-          await checkUserType(session.user.id);
-          await fetchUserProfile(session.user.id);
-          await fetchNotifications(session.user.id);
+        if (data.session?.user) {
+          setUser(data.session.user);
+          setSession(data.session);
+          await checkUserType(data.session.user.id);
+          await fetchUserProfile(data.session.user.id);
+          await fetchNotifications(data.session.user.id);
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Listen for auth changes
       const { data: { subscription } } = await supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.id);
+        console.log("Auth state changed:", event, session?.user?.id || "No session");
         
         if (session?.user) {
           setUser(session.user);
@@ -207,6 +207,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name: userData.name
+          }
+        }
       });
       
       if (error) return { error };

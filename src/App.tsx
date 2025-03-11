@@ -29,8 +29,17 @@ import UserProfileLayout from "./pages/Profile/UserProfileLayout";
 import UserProfile from "./pages/Profile/UserProfile";
 import OrderHistory from "./pages/Profile/OrderHistory";
 import NotificationPanel from "./pages/Profile/NotificationPanel";
+import LoginPage from "./pages/Auth/Login";
+import RegisterPage from "./pages/Auth/Register";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 export const AuthContext = createContext<{
   isAuthenticated: boolean;
@@ -72,7 +81,7 @@ const CustomerProtectedRoute = ({ children }: { children: React.ReactNode }) => 
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/auth/login" replace />;
   }
 
   return <>{children}</>;
@@ -185,8 +194,10 @@ const App = () => {
                 <Route path="/about" element={<About />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 
-                {/* Auth routes */}
+                {/* Auth routes - Restored previous structure */}
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/auth/login" element={<LoginPage />} />
+                <Route path="/auth/register" element={<RegisterPage />} />
                 
                 {/* User profile routes */}
                 <Route 

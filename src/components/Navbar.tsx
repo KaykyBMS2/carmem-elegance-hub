@@ -40,7 +40,7 @@ const Navbar = () => {
           : 'py-4 bg-transparent'
       }`}
     >
-      <div className="main-container flex items-center justify-between">
+      <div className="container mx-auto px-4 flex items-center justify-between">
         {/* Logo */}
         <Link 
           to="/" 
@@ -73,7 +73,7 @@ const Navbar = () => {
             <div className="glass-effect px-4 py-2 rounded-full flex items-center gap-1 shadow-subtle">
               <Link 
                 to="/" 
-                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-medium ${
+                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-bold ${
                   location.pathname === '/' 
                     ? 'bg-brand-purple text-white shadow-sm' 
                     : 'hover:bg-white/50'
@@ -83,7 +83,7 @@ const Navbar = () => {
               </Link>
               <Link 
                 to="/shop" 
-                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-medium ${
+                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-bold ${
                   location.pathname === '/shop' 
                     ? 'bg-brand-purple text-white shadow-sm' 
                     : 'hover:bg-white/50'
@@ -93,7 +93,7 @@ const Navbar = () => {
               </Link>
               <Link 
                 to="/gallery" 
-                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-medium ${
+                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-bold ${
                   location.pathname === '/gallery' 
                     ? 'bg-brand-purple text-white shadow-sm' 
                     : 'hover:bg-white/50'
@@ -103,7 +103,7 @@ const Navbar = () => {
               </Link>
               <Link 
                 to="/about" 
-                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-medium ${
+                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-bold ${
                   location.pathname === '/about' 
                     ? 'bg-brand-purple text-white shadow-sm' 
                     : 'hover:bg-white/50'
@@ -113,7 +113,7 @@ const Navbar = () => {
               </Link>
               <Link 
                 to="/contact" 
-                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-medium ${
+                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-bold ${
                   location.pathname === '/contact' 
                     ? 'bg-brand-purple text-white shadow-sm' 
                     : 'hover:bg-white/50'
@@ -123,14 +123,14 @@ const Navbar = () => {
               </Link>
             </div>
             
-            {/* User Auth - Redesigned */}
+            {/* User Auth */}
             <div className="ml-4 flex items-center gap-2">
               {isAuthenticated ? (
                 <div className="flex items-center gap-2">
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="rounded-full border-brand-purple/30 hover:bg-brand-purple/10 hover:text-brand-purple"
+                    className="rounded-full border-brand-purple/30 hover:bg-brand-purple/10 hover:text-brand-purple font-bold"
                     asChild
                   >
                     <Link to="/profile/orders">
@@ -142,7 +142,7 @@ const Navbar = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      className="rounded-full border-brand-purple hover:bg-brand-purple/10 hover:text-brand-purple flex items-center gap-1"
+                      className="rounded-full border-brand-purple hover:bg-brand-purple/10 hover:text-brand-purple flex items-center gap-1 font-bold"
                     >
                       <UserCircle className="h-4 w-4" />
                       <span className="max-w-[80px] truncate">{profile?.name || 'Minha Conta'}</span>
@@ -151,21 +151,21 @@ const Navbar = () => {
                       <div className="py-2">
                         <Link 
                           to="/profile" 
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-brand-purple/10 hover:text-brand-purple"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-brand-purple/10 hover:text-brand-purple font-semibold"
                         >
                           <User className="h-4 w-4 mr-2" />
                           <span>Meu Perfil</span>
                         </Link>
                         <Link 
                           to="/profile/orders" 
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-brand-purple/10 hover:text-brand-purple"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-brand-purple/10 hover:text-brand-purple font-semibold"
                         >
                           <Heart className="h-4 w-4 mr-2" />
                           <span>Meus Pedidos</span>
                         </Link>
                         <Link 
                           to="/profile/notifications" 
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-brand-purple/10 hover:text-brand-purple"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-brand-purple/10 hover:text-brand-purple font-semibold"
                         >
                           <Settings className="h-4 w-4 mr-2" />
                           <span>Notificações</span>
@@ -173,7 +173,7 @@ const Navbar = () => {
                         <hr className="my-1" />
                         <button 
                           onClick={() => signOut()}
-                          className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                          className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-semibold"
                         >
                           <LogOut className="h-4 w-4 mr-2" />
                           <span>Sair</span>
@@ -186,7 +186,7 @@ const Navbar = () => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="rounded-full border-brand-purple hover:bg-brand-purple/10 hover:text-brand-purple transition-transform duration-300 hover:scale-105"
+                  className="rounded-full border-brand-purple hover:bg-brand-purple/10 hover:text-brand-purple transition-transform duration-300 hover:scale-105 font-bold"
                   asChild
                 >
                   <Link to="/auth/login" className="flex items-center gap-1">
@@ -199,7 +199,7 @@ const Navbar = () => {
               <Button 
                 variant="default" 
                 size="sm"
-                className="rounded-full bg-brand-purple hover:bg-brand-purple/90 transition-transform duration-300 hover:scale-105"
+                className="rounded-full bg-brand-purple hover:bg-brand-purple/90 transition-transform duration-300 hover:scale-105 font-bold"
                 asChild
               >
                 <Link to="/shop" className="flex items-center gap-1">
@@ -247,7 +247,7 @@ const Navbar = () => {
               <Flower className="absolute -top-8 -left-12 h-6 w-6 text-brand-purple/30 rotate-45" />
               <Flower className="absolute -top-6 -right-10 h-4 w-4 text-brand-purple/20" />
               <div className="text-center">
-                <h2 className="font-montserrat font-semibold text-2xl">Menu</h2>
+                <h2 className="font-montserrat font-bold text-2xl">Menu</h2>
                 <div className="h-0.5 w-12 bg-gradient-to-r from-transparent via-brand-purple to-transparent mx-auto mt-2"></div>
               </div>
             </div>
@@ -283,19 +283,19 @@ const Navbar = () => {
               Contato
             </Link>
             
-            {/* Auth links for mobile - Redesigned */}
+            {/* Auth links for mobile */}
             {isAuthenticated ? (
               <>
                 <Link 
                   to="/profile" 
-                  className="flex items-center gap-2 px-6 py-2 bg-brand-purple/10 rounded-full text-brand-purple font-medium"
+                  className="flex items-center gap-2 px-6 py-2 bg-brand-purple/10 rounded-full text-brand-purple font-bold"
                 >
                   <UserCircle className="h-5 w-5" />
                   <span>Meu Perfil</span>
                 </Link>
                 <button 
                   onClick={() => signOut()}
-                  className="flex items-center gap-2 px-6 py-2 bg-red-50 rounded-full text-red-600 font-medium"
+                  className="flex items-center gap-2 px-6 py-2 bg-red-50 rounded-full text-red-600 font-bold"
                 >
                   <LogOut className="h-5 w-5" />
                   <span>Sair</span>
@@ -304,7 +304,7 @@ const Navbar = () => {
             ) : (
               <Link 
                 to="/auth/login" 
-                className="flex items-center gap-2 px-6 py-2 bg-brand-purple/10 rounded-full text-brand-purple font-medium"
+                className="flex items-center gap-2 px-6 py-2 bg-brand-purple/10 rounded-full text-brand-purple font-bold"
               >
                 <LogIn className="h-5 w-5" />
                 <span>Entrar</span>
@@ -313,7 +313,7 @@ const Navbar = () => {
             
             <Link 
               to="/shop" 
-              className="button-primary mt-4 flex items-center group"
+              className="button-primary mt-4 flex items-center group font-bold"
             >
               <ShoppingBag className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
               <span>Explorar</span>
