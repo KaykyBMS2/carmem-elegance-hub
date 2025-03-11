@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Heart, ShoppingBag, TruckIcon, AlertCircle } from 'lucide-react';
+import { Heart, ShoppingBag, TruckIcon, AlertCircle, Ruler } from 'lucide-react';
 import ProductImageGallery from '@/components/ProductImageGallery';
 import ProductRelatedItems from '@/components/ProductRelatedItems';
 
@@ -52,6 +52,9 @@ interface Product {
   material: string | null;
   care_instructions: string | null;
   size_info: string | null;
+  width: number | null;
+  height: number | null;
+  depth: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -242,7 +245,7 @@ const ProductDetail = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-grow container mx-auto px-4 py-8">
+      <main className="flex-grow container mx-auto px-4 py-8 md:pt-24">
         <div className="mb-6">
           <nav className="flex" aria-label="Breadcrumb">
             <ol className="inline-flex items-center space-x-1 md:space-x-3">
@@ -278,17 +281,17 @@ const ProductDetail = () => {
           </div>
 
           {/* Product Info */}
-          <div>
+          <div className="bg-white/40 p-6 rounded-xl backdrop-blur-sm border border-gray-100 shadow-sm">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">{product.name}</h1>
             
             <div className="flex flex-wrap gap-2 mb-4">
               {categories.map((category) => (
-                <Badge key={category.id} variant="secondary">
+                <Badge key={category.id} variant="secondary" className="bg-gray-100 text-gray-800">
                   {category.name}
                 </Badge>
               ))}
               {product.is_rental && (
-                <Badge variant="default" className="bg-brand-purple">
+                <Badge variant="default" className="bg-brand-purple text-white">
                   Aluguel
                 </Badge>
               )}
@@ -297,15 +300,31 @@ const ProductDetail = () => {
             <div className="mb-6">
               {getDisplayPrice()}
               {product.is_rental && product.rental_price && (
-                <div className="mt-2 text-brand-purple">
+                <div className="mt-2 text-brand-purple font-medium">
                   Aluguel: R$ {product.rental_price.toFixed(2).replace('.', ',')}
                 </div>
               )}
             </div>
             
-            <div className="prose prose-sm max-w-none mb-6">
+            <div className="prose prose-sm max-w-none mb-6 text-gray-700">
               <p>{product.description}</p>
             </div>
+            
+            {(product.width || product.height || product.depth) && (
+              <div className="mb-6 bg-gray-50 p-4 rounded-lg flex items-start gap-3">
+                <Ruler className="h-5 w-5 text-brand-purple shrink-0 mt-1" />
+                <div>
+                  <h3 className="font-medium text-gray-800 mb-1">Dimensões</h3>
+                  <p className="text-sm text-gray-600">
+                    {product.width && `Largura: ${product.width} cm`}
+                    {product.height && product.width && ' | '}
+                    {product.height && `Altura: ${product.height} cm`}
+                    {product.depth && (product.width || product.height) && ' | '}
+                    {product.depth && `Profundidade: ${product.depth} cm`}
+                  </p>
+                </div>
+              </div>
+            )}
             
             {sizes.length > 0 && (
               <div className="mb-6">
@@ -358,11 +377,11 @@ const ProductDetail = () => {
             )}
             
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <Button className="flex-grow" onClick={handleAddToCart}>
+              <Button className="flex-grow bg-brand-purple hover:bg-brand-purple/90" onClick={handleAddToCart}>
                 <ShoppingBag className="h-5 w-5 mr-2" />
                 Adicionar ao Carrinho
               </Button>
-              <Button variant="outline" onClick={handleAddToWishlist}>
+              <Button variant="outline" className="border-brand-purple text-brand-purple hover:bg-brand-purple/10" onClick={handleAddToWishlist}>
                 <Heart className="h-5 w-5" />
               </Button>
             </div>
@@ -380,14 +399,14 @@ const ProductDetail = () => {
         </div>
 
         <Tabs defaultValue="details" className="mb-12">
-          <TabsList className="mb-6">
-            <TabsTrigger value="details">Detalhes</TabsTrigger>
-            <TabsTrigger value="care">Cuidados</TabsTrigger>
-            <TabsTrigger value="size">Tamanhos</TabsTrigger>
-            <TabsTrigger value="reviews">Avaliações</TabsTrigger>
+          <TabsList className="mb-6 bg-gray-100 p-1">
+            <TabsTrigger value="details" className="data-[state=active]:bg-white data-[state=active]:text-brand-purple">Detalhes</TabsTrigger>
+            <TabsTrigger value="care" className="data-[state=active]:bg-white data-[state=active]:text-brand-purple">Cuidados</TabsTrigger>
+            <TabsTrigger value="size" className="data-[state=active]:bg-white data-[state=active]:text-brand-purple">Tamanhos</TabsTrigger>
+            <TabsTrigger value="reviews" className="data-[state=active]:bg-white data-[state=active]:text-brand-purple">Avaliações</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="details" className="prose max-w-none">
+          <TabsContent value="details" className="prose max-w-none bg-white/70 p-6 rounded-xl backdrop-blur-sm border border-gray-100 shadow-sm">
             <h3>Descrição</h3>
             <p>{product.description}</p>
             
@@ -403,7 +422,7 @@ const ProductDetail = () => {
                 <h3>Tags</h3>
                 <div className="flex flex-wrap gap-2 not-prose">
                   {tags.map((tag) => (
-                    <Badge key={tag.id} variant="outline">
+                    <Badge key={tag.id} variant="outline" className="bg-white border-brand-purple text-gray-800">
                       {tag.name}
                     </Badge>
                   ))}
@@ -412,7 +431,7 @@ const ProductDetail = () => {
             )}
           </TabsContent>
           
-          <TabsContent value="care" className="prose max-w-none">
+          <TabsContent value="care" className="prose max-w-none bg-white/70 p-6 rounded-xl backdrop-blur-sm border border-gray-100 shadow-sm">
             <h3>Instruções de Cuidado</h3>
             {product.care_instructions ? (
               <p>{product.care_instructions}</p>
@@ -421,7 +440,7 @@ const ProductDetail = () => {
             )}
           </TabsContent>
           
-          <TabsContent value="size" className="prose max-w-none">
+          <TabsContent value="size" className="prose max-w-none bg-white/70 p-6 rounded-xl backdrop-blur-sm border border-gray-100 shadow-sm">
             <h3>Informações de Tamanho</h3>
             {product.size_info ? (
               <p>{product.size_info}</p>
@@ -441,14 +460,25 @@ const ProductDetail = () => {
                 </ul>
               </>
             )}
+            
+            {(product.width || product.height || product.depth) && (
+              <>
+                <h4>Dimensões do Produto</h4>
+                <ul>
+                  {product.width && <li>Largura: {product.width} cm</li>}
+                  {product.height && <li>Altura: {product.height} cm</li>}
+                  {product.depth && <li>Profundidade: {product.depth} cm</li>}
+                </ul>
+              </>
+            )}
           </TabsContent>
           
-          <TabsContent value="reviews" className="prose max-w-none">
+          <TabsContent value="reviews" className="prose max-w-none bg-white/70 p-6 rounded-xl backdrop-blur-sm border border-gray-100 shadow-sm">
             <h3>Avaliações</h3>
             <p>Este produto ainda não possui avaliações.</p>
             
             <div className="mt-6 not-prose">
-              <Button variant="outline">Escrever uma avaliação</Button>
+              <Button variant="outline" className="border-brand-purple text-brand-purple hover:bg-brand-purple/10">Escrever uma avaliação</Button>
             </div>
           </TabsContent>
         </Tabs>
@@ -456,6 +486,7 @@ const ProductDetail = () => {
         {/* Related Products */}
         {tags.length > 0 && (
           <div className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 font-montserrat">Você também pode gostar</h2>
             <ProductRelatedItems 
               productId={product.id} 
               tags={tags.map(tag => tag.id)} 

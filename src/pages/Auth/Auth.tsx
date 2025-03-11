@@ -25,7 +25,7 @@ const Auth = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 min-h-screen pt-32 pb-20">
+    <div className="container mx-auto px-4 min-h-screen pt-16 md:pt-32 pb-20">
       <div className="max-w-md mx-auto glass-card p-8 rounded-xl shadow-subtle">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-montserrat font-bold text-gray-800">Bem-vinda à Carmem Bezerra</h1>

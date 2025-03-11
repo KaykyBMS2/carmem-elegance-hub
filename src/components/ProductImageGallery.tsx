@@ -49,11 +49,13 @@ const ProductImageGallery = ({ images }: ProductImageGalleryProps) => {
   return (
     <div className="space-y-4">
       <div className="relative overflow-hidden rounded-lg bg-gray-100 aspect-square">
-        <img 
-          src={sortedImages[currentIndex].image_url} 
-          alt="Product" 
-          className="object-cover w-full h-full"
-        />
+        {sortedImages.length > 0 && (
+          <img 
+            src={sortedImages[currentIndex]?.image_url} 
+            alt="Product" 
+            className="object-cover w-full h-full"
+          />
+        )}
         
         {images.length > 1 && (
           <>

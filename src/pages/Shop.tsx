@@ -44,9 +44,11 @@ const Shop = () => {
 
         // Transform data to match ProductCardProps
         const transformedProducts: ProductCardProps[] = productsData.map(product => {
-          const imageUrl = product.product_images && product.product_images.length > 0
-            ? product.product_images[0].image_url
-            : "/placeholder.svg";
+          const primaryImage = product.product_images.find(img => img.is_primary);
+          const firstImage = product.product_images[0];
+          const imageUrl = primaryImage ? primaryImage.image_url : 
+                           firstImage ? firstImage.image_url : 
+                           "/placeholder.svg";
 
           return {
             id: product.id, 
