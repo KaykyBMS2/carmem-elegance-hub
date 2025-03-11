@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Shop from "./pages/Shop";
 import Gallery from "./pages/Gallery";
@@ -72,14 +72,11 @@ const CustomerProtectedRoute = ({ children }: { children: React.ReactNode }) => 
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth/login" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   return <>{children}</>;
 };
-
-// Use the AuthContext from contexts/AuthContext.tsx
-const useAuth = () => useContext(AuthContext);
 
 const App = () => {
   const [authState, setAuthState] = useState({
@@ -91,22 +88,36 @@ const App = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      
-      if (data.session) {
-        const { data: adminData } = await supabase
-          .from('admin_users')
-          .select('role')
-          .eq('id', data.session.user.id)
-          .single();
+      try {
+        const { data } = await supabase.auth.getSession();
+        
+        if (data.session) {
+          const { data: adminData, error } = await supabase
+            .from('admin_users')
+            .select('role')
+            .eq('id', data.session.user.id)
+            .single();
           
-        setAuthState({
-          isAuthenticated: true,
-          isAdmin: adminData?.role === 'admin',
-          isLoading: false,
-          user: data.session.user,
-        });
-      } else {
+          if (error && error.code !== 'PGRST116') {
+            console.error("Error checking admin status:", error);
+          }
+            
+          setAuthState({
+            isAuthenticated: true,
+            isAdmin: !!adminData,
+            isLoading: false,
+            user: data.session.user,
+          });
+        } else {
+          setAuthState({
+            isAuthenticated: false,
+            isAdmin: false,
+            isLoading: false,
+            user: null,
+          });
+        }
+      } catch (error) {
+        console.error("Error checking auth:", error);
         setAuthState({
           isAuthenticated: false,
           isAdmin: false,
@@ -119,19 +130,29 @@ const App = () => {
     checkAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Admin Auth state change:", event, session?.user?.id);
+      
       if (event === "SIGNED_IN" && session) {
-        const { data: adminData } = await supabase
-          .from('admin_users')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
+        try {
+          const { data: adminData, error } = await supabase
+            .from('admin_users')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
           
-        setAuthState({
-          isAuthenticated: true,
-          isAdmin: adminData?.role === 'admin',
-          isLoading: false,
-          user: session.user,
-        });
+          if (error && error.code !== 'PGRST116') {
+            console.error("Error checking admin status on auth change:", error);
+          }
+            
+          setAuthState({
+            isAuthenticated: true,
+            isAdmin: !!adminData,
+            isLoading: false,
+            user: session.user,
+          });
+        } catch (error) {
+          console.error("Error in auth change handler:", error);
+        }
       } else if (event === "SIGNED_OUT") {
         setAuthState({
           isAuthenticated: false,
@@ -165,8 +186,7 @@ const App = () => {
                 <Route path="/product/:id" element={<ProductDetail />} />
                 
                 {/* Auth routes */}
-                <Route path="/auth/login" element={<Auth />} />
-                <Route path="/auth/register" element={<Auth />} />
+                <Route path="/auth" element={<Auth />} />
                 
                 {/* User profile routes */}
                 <Route 

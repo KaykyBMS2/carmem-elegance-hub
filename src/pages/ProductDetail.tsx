@@ -1,709 +1,468 @@
 
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Heart, ChevronRight, ArrowLeft, Check, Info, Star, Send } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useParams, Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { ProductProps } from '@/components/ProductCard';
-import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/hooks/use-toast';
+import { Heart, ShoppingBag, TruckIcon, AlertCircle } from 'lucide-react';
+import ProductImageGallery from '@/components/ProductImageGallery';
+import ProductRelatedItems from '@/components/ProductRelatedItems';
+
+interface ProductImage {
+  id: string;
+  image_url: string;
+  is_primary: boolean;
+}
 
 interface ProductSize {
   id: string;
-  product_id: string;
   size: string;
   is_universal: boolean;
 }
 
-interface ProductDetail {
-  material?: string;
-  color?: string;
-  duration?: string;
-  size_info?: string;
-  care_instructions?: string;
-  available_sizes?: string[];
-}
-
-interface Review {
+interface ProductColor {
   id: string;
-  product_id: string;
-  user_id: string;
-  user_name: string;
-  rating: number;
-  comment: string;
-  created_at: string;
+  color: string;
+  color_code: string;
 }
 
-interface RelatedProduct {
+interface Category {
   id: string;
   name: string;
-  image: string;
+}
+
+interface Tag {
+  id: string;
+  name: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
   regular_price: number;
-  rental_price: number | null;
+  sale_price: number | null;
+  promotional_price: number | null;
   is_rental: boolean;
+  rental_price: number | null;
+  material: string | null;
+  care_instructions: string | null;
+  size_info: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
-  const queryClient = useQueryClient();
-  
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [selectedSize, setSelectedSize] = useState<string>('');
-  const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState<'description' | 'details' | 'reviews'>('description');
-  const [reviewText, setReviewText] = useState('');
-  const [rating, setRating] = useState(5);
-  
-  // Fetch product data from Supabase
-  const { data: product, isLoading, error } = useQuery({
-    queryKey: ['product', id],
-    queryFn: async () => {
+  const [product, setProduct] = useState<Product | null>(null);
+  const [images, setImages] = useState<ProductImage[]>([]);
+  const [sizes, setSizes] = useState<ProductSize[]>([]);
+  const [colors, setColors] = useState<ProductColor[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProductDetails = async () => {
+      if (!id) return;
+      
+      setLoading(true);
       try {
-        console.log("Fetching product with ID:", id);
-        
+        // Fetch product data
         const { data: productData, error: productError } = await supabase
           .from('products')
-          .select(`
-            *,
-            product_images(*),
-            product_sizes(*)
-          `)
+          .select('*')
           .eq('id', id)
           .single();
-          
-        if (productError) {
-          console.error("Error fetching product:", productError);
-          throw productError;
-        }
         
-        if (!productData) {
-          console.error("Product not found");
-          throw new Error('Product not found');
-        }
+        if (productError) throw productError;
         
-        console.log("Product data:", productData);
+        setProduct(productData);
         
-        // Transform to ProductProps
-        const transformedProduct: ProductProps & {details?: ProductDetail, sizes?: ProductSize[]} = {
-          id: productData.id,
-          name: productData.name,
-          description: productData.description || '',
-          price: productData.regular_price,
-          rentalPrice: productData.rental_price,
-          image: productData.product_images && productData.product_images.length > 0
-            ? productData.product_images[0].image_url
-            : "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop",
-          category: "Vestidos", // Default category, would need to fetch from joined table
-          isRental: productData.is_rental || false,
-          rentalIncludes: ["Vestido", "Coroa", "Terço", "Urso", "Sutiã"], // Default includes
-          sizes: productData.product_sizes || [],
-          details: {
-            material: productData.material || 'Algodão, Poliéster',
-            color: productData.color || 'Diversos',
-            duration: productData.is_rental ? '3 dias' : 'N/A',
-            available_sizes: productData.product_sizes ? productData.product_sizes.map((size: ProductSize) => size.size) : ['PP', 'P', 'M', 'G', 'GG'],
-            care_instructions: productData.care_instructions || 'Lavar à mão',
-            size_info: productData.size_info || 'Medidas aproximadas'
-          }
-        };
-        
-        return transformedProduct;
-      } catch (error) {
-        console.error('Error fetching product:', error);
-        throw error;
-      }
-    },
-  });
-  
-  // Fetch reviews
-  const { data: reviews = [], refetch: refetchReviews } = useQuery({
-    queryKey: ['reviews', id],
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase
-          .from('product_reviews')
-          .select('*, user_profiles(name)')
-          .eq('product_id', id)
-          .order('created_at', { ascending: false });
-          
-        if (error) throw error;
-        
-        return data.map((review: any) => ({
-          id: review.id,
-          product_id: review.product_id,
-          user_id: review.user_id,
-          user_name: review.user_profiles?.name || 'Usuário anônimo',
-          rating: review.rating,
-          comment: review.comment,
-          created_at: review.created_at
-        }));
-      } catch (error) {
-        console.error('Error fetching reviews:', error);
-        return [];
-      }
-    },
-    enabled: !!id
-  });
-  
-  // Fetch related products (products with same tags)
-  const { data: relatedProducts = [] } = useQuery({
-    queryKey: ['related-products', id],
-    queryFn: async () => {
-      try {
-        // First get the product's tags
-        const { data: productTags } = await supabase
-          .from('product_tags')
-          .select('tag_id')
+        // Fetch product images
+        const { data: imageData, error: imageError } = await supabase
+          .from('product_images')
+          .select('*')
           .eq('product_id', id);
-          
-        if (!productTags || productTags.length === 0) return [];
         
-        const tagIds = productTags.map(pt => pt.tag_id);
+        if (imageError) throw imageError;
         
-        // Then find other products with the same tags
-        const { data: relatedProductIds } = await supabase
-          .from('product_tags')
-          .select('product_id')
-          .in('tag_id', tagIds)
-          .neq('product_id', id) // Exclude the current product
-          .limit(4);
-          
-        if (!relatedProductIds || relatedProductIds.length === 0) return [];
+        setImages(imageData || []);
         
-        // Finally get the details of these related products
-        const relatedIds = [...new Set(relatedProductIds.map(rp => rp.product_id))]; // Remove duplicates
+        // Fetch product sizes
+        const { data: sizeData, error: sizeError } = await supabase
+          .from('product_sizes')
+          .select('*')
+          .eq('product_id', id);
         
-        const { data: relatedProductsData } = await supabase
-          .from('products')
+        if (sizeError) throw sizeError;
+        
+        setSizes(sizeData || []);
+        
+        // Fetch product colors
+        const { data: colorData, error: colorError } = await supabase
+          .from('product_colors')
+          .select('*')
+          .eq('product_id', id);
+        
+        if (colorError) throw colorError;
+        
+        setColors(colorData || []);
+        
+        // Fetch product categories
+        const { data: categoryData, error: categoryError } = await supabase
+          .from('product_categories')
           .select(`
-            id, 
-            name, 
-            regular_price, 
-            rental_price, 
-            is_rental,
-            product_images(image_url)
+            category_id,
+            categories:category_id (id, name)
           `)
-          .in('id', relatedIds)
-          .limit(4);
-          
-        if (!relatedProductsData) return [];
+          .eq('product_id', id);
         
-        return relatedProductsData.map((prod: any) => ({
-          id: prod.id,
-          name: prod.name,
-          regular_price: prod.regular_price,
-          rental_price: prod.rental_price,
-          is_rental: prod.is_rental,
-          image: prod.product_images && prod.product_images.length > 0
-            ? prod.product_images[0].image_url
-            : "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop"
-        }));
+        if (categoryError) throw categoryError;
+        
+        setCategories(
+          categoryData
+            ? categoryData.map((item) => item.categories as Category)
+            : []
+        );
+        
+        // Fetch product tags
+        const { data: tagData, error: tagError } = await supabase
+          .from('product_tags')
+          .select(`
+            tag_id,
+            tags:tag_id (id, name)
+          `)
+          .eq('product_id', id);
+        
+        if (tagError) throw tagError;
+        
+        setTags(
+          tagData ? tagData.map((item) => item.tags as Tag) : []
+        );
+        
       } catch (error) {
-        console.error('Error fetching related products:', error);
-        return [];
+        console.error('Error fetching product details:', error);
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar os detalhes do produto.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
       }
-    },
-    enabled: !!id
-  });
-  
-  // Add review mutation
-  const addReviewMutation = useMutation({
-    mutationFn: async (newReview: { 
-      product_id: string, 
-      rating: number, 
-      comment: string 
-    }) => {
-      if (!user) throw new Error('User must be logged in to leave a review');
-      
-      const { data, error } = await supabase
-        .from('product_reviews')
-        .insert({
-          product_id: newReview.product_id,
-          user_id: user.id,
-          rating: newReview.rating,
-          comment: newReview.comment
-        })
-        .select();
-        
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      // Clear form and refetch reviews
-      setReviewText('');
-      refetchReviews();
-      
-      toast({
-        title: 'Avaliação enviada',
-        description: 'Obrigado por compartilhar sua opinião sobre este produto.',
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Erro ao enviar avaliação',
-        description: error.message || 'Ocorreu um erro. Tente novamente mais tarde.',
-        variant: 'destructive'
-      });
-    }
-  });
-  
-  // Handle errors
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: "Produto não encontrado",
-        description: "O produto que você está procurando não existe ou foi removido.",
-        variant: "destructive"
-      });
-      navigate('/shop');
-    }
-  }, [error, navigate]);
-  
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
+    };
     
-    toast({
-      title: isFavorite ? "Removido dos favoritos" : "Adicionado aos favoritos",
-      description: isFavorite ? "O produto foi removido da sua lista de desejos." : "O produto foi adicionado à sua lista de desejos.",
-    });
-  };
+    fetchProductDetails();
+  }, [id]);
   
   const handleAddToCart = () => {
-    if (product?.isRental && !selectedSize) {
-      toast({
-        title: "Selecione um tamanho",
-        description: "Por favor, selecione um tamanho antes de adicionar ao carrinho.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     toast({
-      title: product?.isRental ? "Aluguel adicionado" : "Produto adicionado",
-      description: product?.isRental 
-        ? "O vestido foi adicionado ao seu carrinho de aluguel." 
-        : "O produto foi adicionado ao seu carrinho de compras.",
+      title: 'Adicionado ao carrinho',
+      description: `${product?.name} foi adicionado ao seu carrinho.`,
     });
   };
   
-  const handleSubmitReview = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Faça login para avaliar",
-        description: "É necessário estar logado para deixar uma avaliação.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!reviewText.trim()) {
-      toast({
-        title: "Avaliação vazia",
-        description: "Por favor, escreva algo sobre o produto.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    addReviewMutation.mutate({
-      product_id: id || '',
-      rating,
-      comment: reviewText
+  const handleAddToWishlist = () => {
+    toast({
+      title: 'Adicionado à lista de desejos',
+      description: `${product?.name} foi adicionado à sua lista de desejos.`,
     });
   };
   
-  if (isLoading) {
+  const getDisplayPrice = () => {
+    if (!product) return '';
+    
+    if (product.promotional_price) {
+      return (
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-semibold text-brand-purple">
+            R$ {product.promotional_price.toFixed(2).replace('.', ',')}
+          </span>
+          <span className="text-sm line-through text-gray-500">
+            R$ {product.regular_price.toFixed(2).replace('.', ',')}
+          </span>
+        </div>
+      );
+    } else if (product.sale_price) {
+      return (
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-semibold text-brand-purple">
+            R$ {product.sale_price.toFixed(2).replace('.', ',')}
+          </span>
+          <span className="text-sm line-through text-gray-500">
+            R$ {product.regular_price.toFixed(2).replace('.', ',')}
+          </span>
+        </div>
+      );
+    } else {
+      return (
+        <span className="text-2xl font-semibold text-brand-purple">
+          R$ {product.regular_price.toFixed(2).replace('.', ',')}
+        </span>
+      );
+    }
+  };
+
+  if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="flex-grow pt-24 flex items-center justify-center">
+        <div className="flex-grow flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-purple"></div>
-        </main>
+        </div>
         <Footer />
       </div>
     );
   }
-  
+
   if (!product) {
-    return null; // Will redirect via the useEffect
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-grow flex flex-col items-center justify-center p-4">
+          <AlertCircle size={48} className="text-brand-purple mb-4" />
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2">Produto não encontrado</h1>
+          <p className="text-gray-600 mb-6">O produto que você está procurando não existe ou foi removido.</p>
+          <Link to="/shop">
+            <Button>Voltar para a loja</Button>
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
   }
-  
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
-      <main className="flex-grow pt-24">
-        <div className="main-container py-8">
-          {/* Breadcrumb */}
-          <div className="flex items-center mb-8 text-sm">
-            <button 
-              onClick={() => navigate('/shop')}
-              className="flex items-center text-muted-foreground hover:text-brand-purple transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              <span>Voltar para a loja</span>
-            </button>
-            <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground" />
-            <span>{product.category}</span>
-            <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground" />
-            <span className="text-brand-purple font-medium">{product.name}</span>
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <nav className="flex" aria-label="Breadcrumb">
+            <ol className="inline-flex items-center space-x-1 md:space-x-3">
+              <li className="inline-flex items-center">
+                <Link to="/" className="text-sm text-gray-500 hover:text-brand-purple">
+                  Home
+                </Link>
+              </li>
+              <li>
+                <div className="flex items-center">
+                  <span className="mx-2 text-gray-400">/</span>
+                  <Link to="/shop" className="text-sm text-gray-500 hover:text-brand-purple">
+                    Loja
+                  </Link>
+                </div>
+              </li>
+              <li aria-current="page">
+                <div className="flex items-center">
+                  <span className="mx-2 text-gray-400">/</span>
+                  <span className="text-sm text-gray-700 truncate max-w-[150px] md:max-w-xs">
+                    {product.name}
+                  </span>
+                </div>
+              </li>
+            </ol>
+          </nav>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          {/* Product Images */}
+          <div>
+            <ProductImageGallery images={images} />
           </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Product Image */}
-            <div className="glass-card p-4 rounded-2xl overflow-hidden">
-              <div className="relative aspect-[4/5] overflow-hidden rounded-xl">
-                <img 
-                  src={product.image} 
-                  alt={product.name} 
-                  className="w-full h-full object-cover"
-                />
-                
-                {product.isRental && (
-                  <div className="absolute top-4 left-4 bg-brand-purple text-white px-3 py-1 rounded-full text-xs font-medium">
-                    Aluguel
-                  </div>
-                )}
-                
-                <button 
-                  onClick={toggleFavorite}
-                  className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center transition-colors hover:bg-white"
-                >
-                  <Heart className={`h-5 w-5 ${isFavorite ? 'fill-brand-purple text-brand-purple' : ''}`} />
-                </button>
-              </div>
+
+          {/* Product Info */}
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">{product.name}</h1>
+            
+            <div className="flex flex-wrap gap-2 mb-4">
+              {categories.map((category) => (
+                <Badge key={category.id} variant="secondary">
+                  {category.name}
+                </Badge>
+              ))}
+              {product.is_rental && (
+                <Badge variant="default" className="bg-brand-purple">
+                  Aluguel
+                </Badge>
+              )}
             </div>
             
-            {/* Product Info */}
-            <div className="space-y-8">
-              <div>
-                <h1 className="text-3xl font-montserrat font-semibold mb-2">{product.name}</h1>
-                <p className="text-muted-foreground mb-4">{product.category}</p>
-                
-                <div className="flex items-baseline mb-6">
-                  {product.isRental ? (
-                    <>
-                      <span className="text-3xl font-semibold text-brand-purple">R$ {product.rentalPrice?.toFixed(2)}</span>
-                      <span className="text-sm text-muted-foreground ml-2">/ aluguel</span>
-                    </>
-                  ) : (
-                    <span className="text-3xl font-semibold text-brand-purple">R$ {product.price.toFixed(2)}</span>
-                  )}
+            <div className="mb-6">
+              {getDisplayPrice()}
+              {product.is_rental && product.rental_price && (
+                <div className="mt-2 text-brand-purple">
+                  Aluguel: R$ {product.rental_price.toFixed(2).replace('.', ',')}
+                </div>
+              )}
+            </div>
+            
+            <div className="prose prose-sm max-w-none mb-6">
+              <p>{product.description}</p>
+            </div>
+            
+            {sizes.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Tamanho</h3>
+                <div className="flex flex-wrap gap-2">
+                  {sizes.map((size) => (
+                    <button
+                      key={size.id}
+                      className={`px-3 py-1 border rounded-md text-sm transition ${
+                        selectedSize === size.id
+                          ? 'bg-brand-purple text-white border-brand-purple'
+                          : 'border-gray-300 hover:border-brand-purple'
+                      } ${size.is_universal ? 'font-semibold' : ''}`}
+                      onClick={() => setSelectedSize(selectedSize === size.id ? null : size.id)}
+                    >
+                      {size.size}{size.is_universal ? ' (Universal)' : ''}
+                    </button>
+                  ))}
                 </div>
               </div>
-              
-              {/* Rental Includes */}
-              {product.isRental && product.rentalIncludes && (
-                <div className="glass-card p-6 rounded-xl">
-                  <h3 className="text-lg font-medium mb-4">Inclui no aluguel:</h3>
-                  <ul className="space-y-2">
-                    {product.rentalIncludes.map((item, index) => (
-                      <li key={index} className="flex items-center">
-                        <div className="w-5 h-5 rounded-full bg-brand-purple/10 flex items-center justify-center mr-3 flex-shrink-0">
-                          <Check className="h-3 w-3 text-brand-purple" />
-                        </div>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
+            )}
+            
+            {colors.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Cor</h3>
+                <div className="flex flex-wrap gap-3">
+                  {colors.map((color) => (
+                    <button
+                      key={color.id}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition ${
+                        selectedColor === color.id
+                          ? 'ring-2 ring-offset-2 ring-brand-purple'
+                          : 'ring-1 ring-offset-1 ring-gray-300 hover:ring-brand-purple'
+                      }`}
+                      style={{ backgroundColor: color.color_code || '#ccc' }}
+                      onClick={() => setSelectedColor(selectedColor === color.id ? null : color.id)}
+                      title={color.color}
+                    />
+                  ))}
                 </div>
-              )}
-              
-              {/* Sizes */}
-              {product.isRental && product.details?.available_sizes && (
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Selecione o tamanho:</h3>
-                  <div className="flex flex-wrap gap-3">
-                    {product.details.available_sizes.map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => setSelectedSize(size)}
-                        className={`w-12 h-12 rounded-full flex items-center justify-center font-medium transition-all ${
-                          selectedSize === size 
-                            ? 'bg-brand-purple text-white shadow-md' 
-                            : 'bg-gray-100 hover:bg-gray-200'
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  <div className="flex items-center mt-4 text-sm text-muted-foreground">
-                    <Info className="h-4 w-4 mr-2" />
-                    <span>Não se preocupe com o tamanho, fazemos ajustes na entrega.</span>
-                  </div>
-                </div>
-              )}
-              
-              {/* Quantity */}
-              {!product.isRental && (
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Quantidade:</h3>
-                  <div className="flex items-center">
-                    <button 
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
-                      disabled={quantity <= 1}
-                    >
-                      -
-                    </button>
-                    <span className="mx-4 w-10 text-center">{quantity}</span>
-                    <button 
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Add to Cart Button */}
-              <button 
-                onClick={handleAddToCart}
-                className="button-primary w-full flex items-center justify-center"
-              >
-                <ShoppingBag className="mr-2 h-5 w-5" />
-                <span>{product.isRental ? 'Alugar agora' : 'Adicionar ao carrinho'}</span>
-              </button>
-              
-              {/* Tabs */}
+              </div>
+            )}
+            
+            {/* Material */}
+            {product.material && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-1">Material</h3>
+                <p className="text-gray-600">{product.material}</p>
+              </div>
+            )}
+            
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <Button className="flex-grow" onClick={handleAddToCart}>
+                <ShoppingBag className="h-5 w-5 mr-2" />
+                Adicionar ao Carrinho
+              </Button>
+              <Button variant="outline" onClick={handleAddToWishlist}>
+                <Heart className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            <div className="bg-gray-50 rounded-lg p-4 flex items-start space-x-3">
+              <TruckIcon className="h-5 w-5 text-brand-purple shrink-0 mt-0.5" />
               <div>
-                <div className="flex border-b">
-                  <button 
-                    onClick={() => setActiveTab('description')}
-                    className={`py-3 px-6 text-sm font-medium ${
-                      activeTab === 'description' 
-                        ? 'border-b-2 border-brand-purple text-brand-purple' 
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    Descrição
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('details')}
-                    className={`py-3 px-6 text-sm font-medium ${
-                      activeTab === 'details' 
-                        ? 'border-b-2 border-brand-purple text-brand-purple' 
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    Detalhes
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('reviews')}
-                    className={`py-3 px-6 text-sm font-medium ${
-                      activeTab === 'reviews' 
-                        ? 'border-b-2 border-brand-purple text-brand-purple' 
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    Avaliações
-                  </button>
-                </div>
-                
-                <div className="py-6">
-                  {activeTab === 'description' && (
-                    <div>
-                      <p className="text-muted-foreground">
-                        {product.description}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {activeTab === 'details' && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="glass-card p-4 rounded-lg">
-                          <h4 className="text-sm font-medium mb-1">Material</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {product.details?.material || 'Não especificado'}
-                          </p>
-                        </div>
-                        
-                        <div className="glass-card p-4 rounded-lg">
-                          <h4 className="text-sm font-medium mb-1">Cor</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {product.details?.color || 'Não especificado'}
-                          </p>
-                        </div>
-                        
-                        <div className="glass-card p-4 rounded-lg">
-                          <h4 className="text-sm font-medium mb-1">Tamanhos disponíveis</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {product.details?.available_sizes?.join(', ') || 'Não especificado'}
-                          </p>
-                        </div>
-                        
-                        <div className="glass-card p-4 rounded-lg">
-                          <h4 className="text-sm font-medium mb-1">
-                            {product.isRental ? 'Período de aluguel' : 'Garantia'}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            {product.isRental ? product.details?.duration || '3 dias' : '30 dias'}
-                          </p>
-                        </div>
-                        
-                        <div className="glass-card p-4 rounded-lg col-span-2">
-                          <h4 className="text-sm font-medium mb-1">Instruções de cuidado</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {product.details?.care_instructions || 'Não especificado'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {activeTab === 'reviews' && (
-                    <div className="space-y-6">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="text-lg font-medium">Avaliações de clientes</h3>
-                          <div className="flex items-center mt-1">
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star 
-                                  key={star}
-                                  className="h-5 w-5 text-yellow-400" 
-                                  fill={reviews.length > 0 ? "currentColor" : "none"}
-                                />
-                              ))}
-                            </div>
-                            <span className="ml-2 text-sm text-muted-foreground">
-                              {reviews.length > 0 
-                                ? `${(reviews.reduce((acc, rev) => acc + rev.rating, 0) / reviews.length).toFixed(1)} (${reviews.length} avaliações)` 
-                                : 'Seja o primeiro a avaliar'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Add review */}
-                      <div className="glass-card p-6 rounded-xl">
-                        <h4 className="font-medium mb-3">Deixe sua avaliação</h4>
-                        <div className="mb-3">
-                          <div className="flex items-center">
-                            <div className="flex mb-2">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <button 
-                                  key={star}
-                                  onClick={() => setRating(star)}
-                                  className="focus:outline-none"
-                                >
-                                  <Star 
-                                    className="h-6 w-6 text-yellow-400" 
-                                    fill={star <= rating ? "currentColor" : "none"}
-                                  />
-                                </button>
-                              ))}
-                            </div>
-                            <span className="ml-2 text-sm text-muted-foreground">{rating} de 5 estrelas</span>
-                          </div>
-                        </div>
-                        <Textarea 
-                          placeholder="Compartilhe sua experiência com o produto..." 
-                          className="mb-3"
-                          value={reviewText}
-                          onChange={(e) => setReviewText(e.target.value)}
-                        />
-                        <Button 
-                          onClick={handleSubmitReview}
-                          disabled={addReviewMutation.isPending || !reviewText.trim()}
-                          className="flex items-center"
-                        >
-                          {addReviewMutation.isPending 
-                            ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div> 
-                            : <Send className="h-4 w-4 mr-2" />}
-                          Enviar avaliação
-                        </Button>
-                      </div>
-                      
-                      {/* Reviews list */}
-                      <div className="space-y-6">
-                        {reviews.length > 0 ? (
-                          reviews.map((review) => (
-                            <div key={review.id} className="glass-card p-6 rounded-xl">
-                              <div className="flex items-start justify-between mb-4">
-                                <div>
-                                  <h4 className="font-medium">{review.user_name}</h4>
-                                  <div className="flex mt-1">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                      <Star 
-                                        key={star}
-                                        className={`h-4 w-4 ${star <= review.rating ? 'text-yellow-400' : 'text-gray-300'}`} 
-                                        fill="currentColor"
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                                <span className="text-sm text-muted-foreground">
-                                  {new Date(review.created_at).toLocaleDateString('pt-BR', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric'
-                                  })}
-                                </span>
-                              </div>
-                              <p className="text-muted-foreground text-sm">{review.comment}</p>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-8 text-muted-foreground">
-                            Ainda não há avaliações para este produto.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <h4 className="font-medium text-gray-900">Entrega</h4>
+                <p className="text-gray-600 text-sm">
+                  Enviamos para todo o Brasil. Frete grátis em compras acima de R$ 300,00.
+                </p>
               </div>
             </div>
           </div>
-          
-          {/* Related Products */}
-          {relatedProducts.length > 0 && (
-            <div className="mt-16">
-              <h2 className="text-2xl font-montserrat font-semibold mb-8">Produtos relacionados</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {relatedProducts.map((related) => (
-                  <div key={related.id} className="glass-card rounded-xl overflow-hidden transition-transform hover:scale-102">
-                    <div className="relative aspect-[3/4] overflow-hidden">
-                      <img src={related.image} alt={related.name} className="w-full h-full object-cover" />
-                      {related.is_rental && (
-                        <div className="absolute top-3 left-3 bg-brand-purple text-white text-xs px-2 py-1 rounded-full">
-                          Aluguel
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-medium mb-1 line-clamp-1">{related.name}</h3>
-                      <div className="text-brand-purple font-semibold">
-                        {related.is_rental && related.rental_price 
-                          ? `R$ ${related.rental_price.toFixed(2)}` 
-                          : `R$ ${related.regular_price.toFixed(2)}`}
-                      </div>
-                      <button 
-                        onClick={() => navigate(`/product/${related.id}`)}
-                        className="w-full mt-3 py-2 text-center text-sm bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                      >
-                        Ver detalhes
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
+
+        <Tabs defaultValue="details" className="mb-12">
+          <TabsList className="mb-6">
+            <TabsTrigger value="details">Detalhes</TabsTrigger>
+            <TabsTrigger value="care">Cuidados</TabsTrigger>
+            <TabsTrigger value="size">Tamanhos</TabsTrigger>
+            <TabsTrigger value="reviews">Avaliações</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="details" className="prose max-w-none">
+            <h3>Descrição</h3>
+            <p>{product.description}</p>
+            
+            {product.material && (
+              <>
+                <h3>Material</h3>
+                <p>{product.material}</p>
+              </>
+            )}
+            
+            {tags.length > 0 && (
+              <>
+                <h3>Tags</h3>
+                <div className="flex flex-wrap gap-2 not-prose">
+                  {tags.map((tag) => (
+                    <Badge key={tag.id} variant="outline">
+                      {tag.name}
+                    </Badge>
+                  ))}
+                </div>
+              </>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="care" className="prose max-w-none">
+            <h3>Instruções de Cuidado</h3>
+            {product.care_instructions ? (
+              <p>{product.care_instructions}</p>
+            ) : (
+              <p>Não há instruções de cuidado específicas para este produto.</p>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="size" className="prose max-w-none">
+            <h3>Informações de Tamanho</h3>
+            {product.size_info ? (
+              <p>{product.size_info}</p>
+            ) : (
+              <p>Não há informações de tamanho específicas para este produto.</p>
+            )}
+            
+            {sizes.length > 0 && (
+              <>
+                <h4>Tamanhos Disponíveis</h4>
+                <ul>
+                  {sizes.map((size) => (
+                    <li key={size.id}>
+                      {size.size}{size.is_universal ? ' (Universal)' : ''}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="reviews" className="prose max-w-none">
+            <h3>Avaliações</h3>
+            <p>Este produto ainda não possui avaliações.</p>
+            
+            <div className="mt-6 not-prose">
+              <Button variant="outline">Escrever uma avaliação</Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Related Products */}
+        {tags.length > 0 && (
+          <div className="mb-12">
+            <ProductRelatedItems 
+              productId={product.id} 
+              tags={tags.map(tag => tag.id)} 
+            />
+          </div>
+        )}
       </main>
-      
       <Footer />
     </div>
   );

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,6 +83,9 @@ const ProductForm = () => {
     promotional_price: "",
     is_rental: false,
     rental_price: "",
+    material: "",
+    care_instructions: "",
+    size_info: ""
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -194,6 +196,9 @@ const ProductForm = () => {
         promotional_price: product.promotional_price?.toString() || "",
         is_rental: product.is_rental || false,
         rental_price: product.rental_price?.toString() || "",
+        material: product.material || "",
+        care_instructions: product.care_instructions || "",
+        size_info: product.size_info || ""
       });
 
       // Set selected categories
@@ -387,6 +392,9 @@ const ProductForm = () => {
             promotional_price: productData.promotional_price ? parseFloat(productData.promotional_price) : null,
             is_rental: productData.is_rental,
             rental_price: productData.rental_price ? parseFloat(productData.rental_price) : null,
+            material: productData.material || null,
+            care_instructions: productData.care_instructions || null,
+            size_info: productData.size_info || null
           })
           .eq("id", id);
         
@@ -403,6 +411,9 @@ const ProductForm = () => {
             promotional_price: productData.promotional_price ? parseFloat(productData.promotional_price) : null,
             is_rental: productData.is_rental,
             rental_price: productData.rental_price ? parseFloat(productData.rental_price) : null,
+            material: productData.material || null,
+            care_instructions: productData.care_instructions || null,
+            size_info: productData.size_info || null
           })
           .select("id")
           .single();
@@ -613,8 +624,9 @@ const ProductForm = () => {
 
       <Tabs defaultValue="basic">
         <div className="mb-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6 md:grid-cols-6">
             <TabsTrigger value="basic">Informações Básicas</TabsTrigger>
+            <TabsTrigger value="details">Detalhes</TabsTrigger>
             <TabsTrigger value="pricing">Preços</TabsTrigger>
             <TabsTrigger value="categorization">Categorias e Tags</TabsTrigger>
             <TabsTrigger value="attributes">Atributos</TabsTrigger>
@@ -663,6 +675,54 @@ const ProductForm = () => {
                     onCheckedChange={toggleRental}
                   />
                   <Label htmlFor="is_rental">Produto para Aluguel</Label>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Product Details */}
+          <TabsContent value="details">
+            <Card>
+              <CardHeader>
+                <CardTitle>Detalhes do Produto</CardTitle>
+                <CardDescription>
+                  Adicione informações detalhadas sobre o produto.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="material">Material</Label>
+                  <Input
+                    id="material"
+                    name="material"
+                    value={productData.material}
+                    onChange={handleChange}
+                    placeholder="Ex: Algodão, Poliéster, Linho, etc."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="care_instructions">Instruções de Cuidado</Label>
+                  <textarea
+                    id="care_instructions"
+                    name="care_instructions"
+                    value={productData.care_instructions}
+                    onChange={handleChange}
+                    rows={3}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+                    placeholder="Ex: Lavar à mão, Não usar alvejante, etc."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="size_info">Informações de Tamanho</Label>
+                  <textarea
+                    id="size_info"
+                    name="size_info"
+                    value={productData.size_info}
+                    onChange={handleChange}
+                    rows={3}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+                    placeholder="Ex: P (36-38), M (40-42), G (44-46)"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -941,218 +1001,4 @@ const ProductForm = () => {
                         className="gap-1"
                       >
                         <span
-                          className="inline-block h-3 w-3 rounded-full"
-                          style={{ backgroundColor: color.color_code }}
-                        ></span>
-                        {color.color}
-                        <button
-                          type="button"
-                          onClick={() => removeColor(index)}
-                          className="ml-1 rounded-full p-0.5 hover:bg-gray-200"
-                        >
-                          <X size={12} />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex items-end gap-2">
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor="color_name">Nome da Cor</Label>
-                      <Input
-                        id="color_name"
-                        value={newColor.color}
-                        onChange={(e) =>
-                          setNewColor((prev) => ({ ...prev, color: e.target.value }))
-                        }
-                        placeholder="Ex: Preto, Branco, Vermelho, etc."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="color_code">Código da Cor</Label>
-                      <div className="flex h-10 items-center gap-2 rounded-md border border-input px-3">
-                        <span
-                          className="inline-block h-5 w-5 rounded-full"
-                          style={{ backgroundColor: newColor.color_code }}
-                        ></span>
-                        <input
-                          type="color"
-                          id="color_code"
-                          value={newColor.color_code}
-                          onChange={(e) =>
-                            setNewColor((prev) => ({
-                              ...prev,
-                              color_code: e.target.value,
-                            }))
-                          }
-                          className="h-8 w-8 cursor-pointer appearance-none border-0 bg-transparent p-0"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={addColor}
-                      disabled={!newColor.color.trim()}
-                      size="sm"
-                      className="mb-0.5"
-                    >
-                      <Plus size={16} className="mr-1" />
-                      Adicionar
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Images */}
-          <TabsContent value="images">
-            <Card>
-              <CardHeader>
-                <CardTitle>Imagens do Produto</CardTitle>
-                <CardDescription>
-                  Adicione imagens do produto. A primeira imagem será usada como imagem principal.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4 rounded-md border border-dashed border-gray-300 p-6">
-                  <div className="text-center">
-                    <Image className="mx-auto h-12 w-12 text-gray-400" />
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        Arraste e solte arquivos de imagem aqui ou clique para
-                        selecionar arquivos
-                      </p>
-                      <p className="mt-1 text-xs text-gray-400">
-                        PNG, JPG ou WEBP até 5MB
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="mt-4"
-                    >
-                      <Upload size={16} className="mr-2" />
-                      Selecionar Arquivos
-                    </Button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageSelect}
-                    />
-                  </div>
-                </div>
-
-                {isUploading && (
-                  <div className="mb-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Enviando imagens...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                      <div
-                        className="h-full bg-brand-purple transition-all"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
-                {images.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                    {images.map((image, index) => (
-                      <div
-                        key={index}
-                        className={`group relative rounded-md border ${
-                          image.is_primary
-                            ? "border-brand-purple"
-                            : "border-gray-200"
-                        } overflow-hidden`}
-                      >
-                        <div className="relative pt-[100%]">
-                          <img
-                            src={image.preview || image.image_url}
-                            alt={`Product image ${index + 1}`}
-                            className="absolute inset-0 h-full w-full object-cover"
-                          />
-                        </div>
-                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 transition-opacity group-hover:opacity-100">
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setPrimaryImage(index)}
-                              className={`rounded-full bg-white p-2 text-gray-700 hover:text-brand-purple ${
-                                image.is_primary ? "text-brand-purple" : ""
-                              }`}
-                              title="Definir como imagem principal"
-                            >
-                              {image.is_primary ? (
-                                <Check size={16} />
-                              ) : (
-                                <Image size={16} />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeImage(index)}
-                              className="rounded-full bg-white p-2 text-gray-700 hover:text-red-500"
-                              title="Remover imagem"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                        {image.is_primary && (
-                          <div className="absolute top-0 right-0 rounded-bl-md bg-brand-purple px-2 py-1 text-xs font-medium text-white">
-                            Principal
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-md bg-gray-50 p-6 text-center">
-                    <AlertCircle className="mx-auto h-10 w-10 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">
-                      Sem imagens
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Adicione pelo menos uma imagem do produto.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </div>
-      </Tabs>
-
-      <div className="mt-6 flex justify-end space-x-4">
-        <Button
-          variant="outline"
-          onClick={() => navigate("/admin/products")}
-        >
-          Cancelar
-        </Button>
-        <Button onClick={saveProduct} disabled={saving}>
-          {saving ? (
-            <>
-              <Loader2 size={16} className="mr-2 animate-spin" />
-              Salvando...
-            </>
-          ) : (
-            <>
-              <Save size={16} className="mr-2" />
-              Salvar Produto
-            </>
-          )}
-        </Button>
-      </div>
-    </AdminLayout>
-  );
-};
-
-export default ProductForm;
+                          className="inline-block h-3 w-3 rounded-full

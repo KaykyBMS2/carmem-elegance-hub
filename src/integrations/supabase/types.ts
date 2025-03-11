@@ -426,39 +426,48 @@ export type Database = {
       }
       products: {
         Row: {
+          care_instructions: string | null
           created_at: string
           description: string | null
           id: string
           is_rental: boolean | null
+          material: string | null
           name: string
           promotional_price: number | null
           regular_price: number
           rental_price: number | null
           sale_price: number | null
+          size_info: string | null
           updated_at: string
         }
         Insert: {
+          care_instructions?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_rental?: boolean | null
+          material?: string | null
           name: string
           promotional_price?: number | null
           regular_price: number
           rental_price?: number | null
           sale_price?: number | null
+          size_info?: string | null
           updated_at?: string
         }
         Update: {
+          care_instructions?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_rental?: boolean | null
+          material?: string | null
           name?: string
           promotional_price?: number | null
           regular_price?: number
           rental_price?: number | null
           sale_price?: number | null
+          size_info?: string | null
           updated_at?: string
         }
         Relationships: []

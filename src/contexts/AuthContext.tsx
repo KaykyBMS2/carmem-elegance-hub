@@ -1,7 +1,7 @@
 
 import { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 
 interface UserProfile {
   id: string;
@@ -30,6 +30,7 @@ interface Notification {
 
 type AuthContextType = {
   user: User | null;
+  session: Session | null;
   profile: UserProfile | null;
   notifications: Notification[];
   unreadCount: number;
@@ -53,6 +54,7 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -68,33 +70,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const initialize = async () => {
       setIsLoading(true);
       
-      // Check for existing session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        await checkUserType(session.user.id);
-        await fetchUserProfile(session.user.id);
-        await fetchNotifications(session.user.id);
+      try {
+        // Check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log("Initial session check:", session?.user?.id);
+        
+        if (session?.user) {
+          setUser(session.user);
+          setSession(session);
+          await checkUserType(session.user.id);
+          await fetchUserProfile(session.user.id);
+          await fetchNotifications(session.user.id);
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
       
       // Listen for auth changes
       const { data: { subscription } } = await supabase.auth.onAuthStateChange(async (event, session) => {
         console.log("Auth state changed:", event, session?.user?.id);
-        if (event === 'SIGNED_IN' && session?.user) {
+        
+        if (session?.user) {
           setUser(session.user);
-          await checkUserType(session.user.id);
-          await fetchUserProfile(session.user.id);
-          await fetchNotifications(session.user.id);
+          setSession(session);
+          
+          if (event === 'SIGNED_IN') {
+            await checkUserType(session.user.id);
+            await fetchUserProfile(session.user.id);
+            await fetchNotifications(session.user.id);
+          } else if (event === 'USER_UPDATED') {
+            // Just update the user object
+          }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
+          setSession(null);
           setProfile(null);
           setNotifications([]);
           setIsAdmin(false);
           setIsCustomer(false);
-        } else if (event === 'USER_UPDATED' && session?.user) {
-          setUser(session.user);
         }
       });
       
@@ -110,20 +125,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const checkUserType = async (userId: string) => {
     try {
       // Check if admin
-      const { data: adminData } = await supabase
+      const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
         .select('role')
         .eq('id', userId)
         .single();
       
+      if (adminError && adminError.code !== 'PGRST116') {
+        console.error("Error checking admin status:", adminError);
+      }
+      
       setIsAdmin(!!adminData);
       
       // Check if customer
-      const { data: customerData } = await supabase
+      const { data: customerData, error: customerError } = await supabase
         .from('user_profiles')
         .select('id')
         .eq('id', userId)
         .single();
+      
+      if (customerError && customerError.code !== 'PGRST116') {
+        console.error("Error checking customer status:", customerError);
+      }
       
       setIsCustomer(!!customerData);
       
@@ -142,13 +165,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', userId)
         .single();
       
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Error fetching user profile:', error);
         return;
       }
       
-      setProfile(data as UserProfile);
-      console.log("Profile fetched:", data);
+      if (data) {
+        setProfile(data as UserProfile);
+        console.log("Profile fetched:", data);
+      }
     } catch (error) {
       console.error("Error in fetchUserProfile:", error);
     }
@@ -223,10 +248,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Sign in user
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
+      if (!error && data.session) {
+        setUser(data.user);
+        setSession(data.session);
+        await checkUserType(data.user.id);
+        await fetchUserProfile(data.user.id);
+        await fetchNotifications(data.user.id);
+      }
       
       return { error };
     } catch (error) {
@@ -237,6 +270,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Sign out user
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    setProfile(null);
+    setNotifications([]);
+    setIsAdmin(false);
+    setIsCustomer(false);
   };
   
   // Update user profile
@@ -301,6 +340,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const value = {
     user,
+    session,
     profile,
     notifications,
     unreadCount,

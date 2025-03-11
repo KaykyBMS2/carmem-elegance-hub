@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Auth = () => {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
-  const { isAuthenticated, isAdmin, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -18,7 +18,6 @@ const Auth = () => {
     }
   }, [isAuthenticated, navigate, isLoading]);
 
-  // If the user is already authenticated, redirect them
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -27,6 +26,7 @@ const Auth = () => {
     );
   }
 
+  // If the user is already authenticated, redirect them
   if (isAuthenticated) {
     return <Navigate to="/profile" replace />;
   }
