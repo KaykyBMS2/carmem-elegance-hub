@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -1001,4 +1002,204 @@ const ProductForm = () => {
                         className="gap-1"
                       >
                         <span
-                          className="inline-block h-3 w-3 rounded-full
+                          className="inline-block h-3 w-3 rounded-full"
+                          style={{ backgroundColor: color.color_code }}
+                        ></span>
+                        {color.color}
+                        <button
+                          type="button"
+                          onClick={() => removeColor(index)}
+                          className="ml-1 rounded-full p-0.5 hover:bg-gray-200"
+                        >
+                          <X size={12} />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex items-end gap-2">
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="color">Nova Cor</Label>
+                      <Input
+                        id="color"
+                        value={newColor.color}
+                        onChange={(e) =>
+                          setNewColor((prev) => ({ ...prev, color: e.target.value }))
+                        }
+                        placeholder="Ex: Azul, Vermelho, Verde, etc."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="color_code">Código da Cor</Label>
+                      <Input
+                        id="color_code"
+                        type="color"
+                        value={newColor.color_code}
+                        onChange={(e) =>
+                          setNewColor((prev) => ({
+                            ...prev,
+                            color_code: e.target.value,
+                          }))
+                        }
+                        className="h-10 w-20 p-1"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={addColor}
+                      disabled={!newColor.color.trim()}
+                      size="sm"
+                      className="mb-0.5"
+                    >
+                      <Plus size={16} className="mr-1" />
+                      Adicionar
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Images */}
+          <TabsContent value="images">
+            <Card>
+              <CardHeader>
+                <CardTitle>Imagens do Produto</CardTitle>
+                <CardDescription>
+                  Adicione e gerencie as imagens do produto.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                  {images.map((image, index) => (
+                    <div
+                      key={index}
+                      className="relative aspect-square overflow-hidden rounded-md border"
+                    >
+                      <img
+                        src={image.preview || image.image_url}
+                        alt={`Produto ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity hover:opacity-100">
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="bg-white"
+                            onClick={() => setPrimaryImage(index)}
+                            disabled={image.is_primary}
+                          >
+                            {image.is_primary ? (
+                              <Check size={16} className="text-green-500" />
+                            ) : (
+                              "Principal"
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="bg-white text-red-500 hover:bg-red-50 hover:text-red-600"
+                            onClick={() => removeImage(index)}
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
+                      </div>
+                      {image.is_primary && (
+                        <div className="absolute left-2 top-2 rounded-md bg-brand-purple px-2 py-1 text-xs text-white">
+                          Principal
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  <div className="flex aspect-square items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50">
+                    <input
+                      type="file"
+                      id="image-upload"
+                      ref={fileInputRef}
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-col gap-2 p-8"
+                    >
+                      <Upload size={24} />
+                      <span className="text-sm">Adicionar Imagens</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {isUploading && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium">
+                        Enviando imagens...
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {uploadProgress}%
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-200">
+                      <div
+                        className="h-2 rounded-full bg-brand-purple"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4">
+                  <div className="rounded-md bg-yellow-50 p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <AlertCircle className="h-5 w-5 text-yellow-400" />
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800">
+                          Atenção
+                        </h3>
+                        <div className="mt-2 text-sm text-yellow-700">
+                          <p>
+                            As imagens só serão salvas quando você clicar em{" "}
+                            <strong>Salvar Produto</strong>. Certifique-se de
+                            marcar uma imagem como principal.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </div>
+      </Tabs>
+
+      <div className="mt-8 flex justify-end">
+        <Button
+          type="button"
+          onClick={saveProduct}
+          disabled={saving}
+          className="gap-2"
+        >
+          {saving ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Save size={16} />
+          )}
+          {saving ? "Salvando..." : "Salvar Produto"}
+        </Button>
+      </div>
+    </AdminLayout>
+  );
+};
+
+export default ProductForm;
