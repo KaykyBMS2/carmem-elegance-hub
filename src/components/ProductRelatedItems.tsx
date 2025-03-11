@@ -63,8 +63,7 @@ const ProductRelatedItems = ({ productId, tags }: ProductRelatedItemsProps) => {
             let primaryImage = null;
             if (Array.isArray(item.products.primary_image) && 
                 item.products.primary_image.length > 0 && 
-                item.products.primary_image[0] && 
-                typeof item.products.primary_image[0].image_url === 'string') {
+                item.products.primary_image[0]) {
               primaryImage = item.products.primary_image[0].image_url;
             }
             

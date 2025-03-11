@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Filter, ShoppingBag, SlidersHorizontal, ChevronDown, Search } from 'lucide-react';
@@ -48,7 +47,7 @@ const Shop = () => {
         const transformedProducts: ProductCardProps[] = productsData.map(product => {
           const imageUrl = product.product_images && product.product_images.length > 0
             ? product.product_images[0].image_url
-            : "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop";
+            : "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop&fit=crop";
 
           return {
             id: product.id, 
@@ -59,7 +58,6 @@ const Shop = () => {
             promoPrice: product.promotional_price,
             rentalPrice: product.rental_price,
             imageUrl: imageUrl,
-            category: "Vestidos", // Default category, would need to fetch from joined table
             isRental: product.is_rental || false
           };
         });
@@ -86,18 +84,13 @@ const Shop = () => {
     
     let result = [...products];
     
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      result = result.filter(product => product.category === selectedCategory);
-    }
-    
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
         product => 
           product.name.toLowerCase().includes(query) || 
-          product.description.toLowerCase().includes(query)
+          (product.description && product.description.toLowerCase().includes(query))
       );
     }
     
