@@ -13,42 +13,42 @@ import ProductCard from "@/components/ProductCard";
 
 const featuredProducts = [
   {
-    id: 1,
+    id: "1",
     name: "Vestido Serenity para Ensaio",
     description: "Vestido elegante em tom suave, perfeito para ensaios fotográficos externos. Valoriza o corpo da gestante com delicadeza.",
     price: 0,
     rentalPrice: 30,
-    image: "https://images.unsplash.com/photo-1556648011-e01aca870a81?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3",
+    imageUrl: "https://images.unsplash.com/photo-1556648011-e01aca870a81?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3",
     category: "Vestidos",
     isRental: true,
     rentalIncludes: ["Vestido", "Coroa", "Urso", "Terço", "Sutiã"]
   },
   {
-    id: 2,
+    id: "2",
     name: "Combo Premium 4 Vestidos",
     description: "Pacote completo com 4 vestidos exclusivos para ensaios fotográficos, incluindo todos os acessórios necessários.",
     price: 0,
     rentalPrice: 100,
-    image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3",
+    imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3",
     category: "Combo",
     isRental: true,
     rentalIncludes: ["4 Vestidos", "4 Coroas", "Terço", "Lousa", "Urso", "Sutiã"]
   },
   {
-    id: 3,
+    id: "3",
     name: "Bolsa Maternidade Luxo",
     description: "Bolsa maternidade espaçosa com múltiplos compartimentos. Design elegante e prático para todas as necessidades do bebê.",
     price: 149.9,
-    image: "https://images.unsplash.com/photo-1445796865116-a9254123101a?q=80&w=2574&auto=format&fit=crop&ixlib=rb-4.0.3",
+    imageUrl: "https://images.unsplash.com/photo-1445796865116-a9254123101a?q=80&w=2574&auto=format&fit=crop&ixlib=rb-4.0.3",
     category: "Bolsas",
     isRental: false
   },
   {
-    id: 4,
+    id: "4",
     name: "Kit Enxoval Delicado",
     description: "Kit completo para o enxoval do bebê, com peças de alta qualidade e design exclusivo em tons suaves.",
     price: 299.9,
-    image: "https://images.unsplash.com/photo-1519689680058-324335c77eba?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3",
+    imageUrl: "https://images.unsplash.com/photo-1519689680058-324335c77eba?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.0.3",
     category: "Enxoval",
     isRental: false
   }
@@ -123,7 +123,14 @@ const Index = () => {
                 className="animate-on-scroll opacity-0"
                 style={{ animationDelay: `${index * 150}ms` }}
               >
-                <ProductCard {...product} />
+                <ProductCard
+                  id={product.id}
+                  name={product.name}
+                  price={product.price}
+                  imageUrl={product.imageUrl}
+                  isRental={product.isRental}
+                  rentalPrice={product.rentalPrice}
+                />
               </div>
             ))}
           </div>

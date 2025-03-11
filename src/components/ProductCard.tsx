@@ -2,7 +2,7 @@
 import { Link } from 'react-router-dom';
 import { Badge } from './ui/badge';
 
-interface ProductCardProps {
+export interface ProductCardProps {
   id: string;
   name: string;
   price: number;
@@ -12,6 +12,7 @@ interface ProductCardProps {
   isRental?: boolean;
   rentalPrice?: number | null;
   className?: string;
+  description?: string;
 }
 
 const ProductCard = ({

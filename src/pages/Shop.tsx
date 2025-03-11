@@ -5,13 +5,13 @@ import { Filter, ShoppingBag, SlidersHorizontal, ChevronDown, Search } from 'luc
 import { useQuery } from '@tanstack/react-query';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import ProductCard, { ProductProps } from '@/components/ProductCard';
+import ProductCard, { ProductCardProps } from '@/components/ProductCard';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const Shop = () => {
   const navigate = useNavigate();
-  const [filteredProducts, setFilteredProducts] = useState<ProductProps[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<ProductCardProps[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,22 +44,23 @@ const Shop = () => {
           setCategories(['all', ...categoriesData.map(cat => cat.name)]);
         }
 
-        // Transform data to match ProductProps
-        const transformedProducts: ProductProps[] = productsData.map(product => {
+        // Transform data to match ProductCardProps
+        const transformedProducts: ProductCardProps[] = productsData.map(product => {
           const imageUrl = product.product_images && product.product_images.length > 0
             ? product.product_images[0].image_url
             : "https://images.unsplash.com/photo-1555116505-38ab61800975?q=80&w=2670&auto=format&fit=crop";
 
           return {
-            id: product.id, // This stays as a string now that we've updated the interface
+            id: product.id, 
             name: product.name,
             description: product.description || "",
             price: product.regular_price,
+            salePrice: product.sale_price,
+            promoPrice: product.promotional_price,
             rentalPrice: product.rental_price,
-            image: imageUrl,
+            imageUrl: imageUrl,
             category: "Vestidos", // Default category, would need to fetch from joined table
-            isRental: product.is_rental || false,
-            rentalIncludes: [] // This would require additional data
+            isRental: product.is_rental || false
           };
         });
 

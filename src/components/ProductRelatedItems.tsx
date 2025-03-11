@@ -58,10 +58,21 @@ const ProductRelatedItems = ({ productId, tags }: ProductRelatedItemsProps) => {
         // Format the data
         const formattedProducts = data
           .filter(item => item.products) // Filter out nulls
-          .map(item => ({
-            ...item.products,
-            primary_image: item.products.primary_image?.[0]?.image_url || null,
-          }))
+          .map(item => {
+            // Extract the image URL safely from the array of objects
+            let primaryImage = null;
+            if (Array.isArray(item.products.primary_image) && 
+                item.products.primary_image.length > 0 && 
+                item.products.primary_image[0] && 
+                typeof item.products.primary_image[0].image_url === 'string') {
+              primaryImage = item.products.primary_image[0].image_url;
+            }
+            
+            return {
+              ...item.products,
+              primary_image: primaryImage
+            };
+          })
           .filter((product, index, self) => 
             // Remove duplicates
             index === self.findIndex(p => p.id === product.id)
@@ -132,7 +143,7 @@ const ProductRelatedItems = ({ productId, tags }: ProductRelatedItemsProps) => {
         {products.map(product => (
           <div 
             key={product.id} 
-            className="flex-none w-64 sm:w-72 md:w-1/3 lg:w-1/4 xl:w-1/5 snap-start"
+            className="flex-none w-[calc(33.333%-16px)] sm:w-64 md:w-1/3 lg:w-1/4 xl:w-1/5 snap-start"
           >
             <ProductCard 
               id={product.id}
