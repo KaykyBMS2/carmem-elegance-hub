@@ -20,6 +20,7 @@ const Shop = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
+        setLoading(true);
         // Fetch products with their images
         const { data: productsData, error } = await supabase
           .from('products')
@@ -48,8 +49,8 @@ const Shop = () => {
 
         // Transform data to match ProductCardProps
         const transformedProducts: ProductCardProps[] = productsData.map(product => {
-          const primaryImage = product.product_images.find(img => img.is_primary);
-          const firstImage = product.product_images[0];
+          const primaryImage = product.product_images?.find(img => img.is_primary);
+          const firstImage = product.product_images?.[0];
           const imageUrl = primaryImage ? primaryImage.image_url : 
                            firstImage ? firstImage.image_url : 
                            "/placeholder.svg";
@@ -79,7 +80,7 @@ const Shop = () => {
 
   // Filter and sort products
   const processedProducts = () => {
-    if (!products.length) return [];
+    if (!products || !products.length) return [];
     
     let result = [...products];
     

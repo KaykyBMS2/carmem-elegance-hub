@@ -12,7 +12,8 @@ import {
   LogOut, 
   Menu, 
   X, 
-  ChevronDown 
+  ChevronDown,
+  Image 
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
   const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Produtos', href: '/admin/products', icon: ShoppingBag },
+    { name: 'Ensaios', href: '/admin/photoshoots', icon: Image },
     { name: 'Pedidos', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Clientes', href: '/admin/customers', icon: Users },
     { name: 'Categorias', href: '/admin/categories', icon: Tag },

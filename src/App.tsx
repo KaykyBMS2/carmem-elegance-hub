@@ -24,6 +24,7 @@ import ProductForm from "./pages/admin/ProductForm";
 import OrderDetail from "./pages/admin/OrderDetail";
 import CustomerDetail from "./pages/admin/CustomerDetail";
 import AdminSettings from "./pages/admin/AdminSettings";
+import PhotoshootManagement from "./pages/admin/PhotoshootoManagement";
 import Auth from "./pages/Auth/Auth";
 import UserProfileLayout from "./pages/Profile/UserProfileLayout";
 import UserProfile from "./pages/Profile/UserProfile";
@@ -237,6 +238,11 @@ const App = () => {
                 <Route path="/admin/products/:id" element={
                   <ProtectedRoute>
                     <ProductForm />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/photoshoots" element={
+                  <ProtectedRoute>
+                    <PhotoshootManagement />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/orders" element={
