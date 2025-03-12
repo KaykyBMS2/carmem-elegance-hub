@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,7 +8,6 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
-import Shop from "./pages/Shop";
 import Gallery from "./pages/Gallery";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
@@ -188,7 +188,6 @@ const App = () => {
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<Index />} />
-                <Route path="/shop" element={<Shop />} />
                 <Route path="/gallery" element={<Gallery />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/about" element={<About />} />
@@ -275,6 +274,9 @@ const App = () => {
                     <AdminSettings />
                   </ProtectedRoute>
                 } />
+                
+                {/* Redirect /shop to home */}
+                <Route path="/shop" element={<Navigate to="/" replace />} />
                 
                 {/* Catch-all route */}
                 <Route path="*" element={<NotFound />} />

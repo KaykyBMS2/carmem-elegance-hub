@@ -82,16 +82,6 @@ const Navbar = () => {
                 Início
               </Link>
               <Link 
-                to="/shop" 
-                className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-bold ${
-                  location.pathname === '/shop' 
-                    ? 'bg-brand-purple text-white shadow-sm' 
-                    : 'hover:bg-white/50'
-                }`}
-              >
-                Loja
-              </Link>
-              <Link 
                 to="/gallery" 
                 className={`px-4 py-1.5 rounded-full transition-all duration-300 font-montserrat text-sm font-bold ${
                   location.pathname === '/gallery' 
@@ -202,7 +192,7 @@ const Navbar = () => {
                 className="rounded-full bg-brand-purple hover:bg-brand-purple/90 transition-transform duration-300 hover:scale-105 font-bold"
                 asChild
               >
-                <Link to="/shop" className="flex items-center gap-1">
+                <Link to="/" className="flex items-center gap-1">
                   <ShoppingBag className="h-4 w-4" />
                   <span>Explorar</span>
                 </Link>
@@ -259,12 +249,6 @@ const Navbar = () => {
               Início
             </Link>
             <Link 
-              to="/shop" 
-              className={`mobile-nav-link ${location.pathname === '/shop' ? 'text-brand-purple' : ''}`}
-            >
-              Loja
-            </Link>
-            <Link 
               to="/gallery" 
               className={`mobile-nav-link ${location.pathname === '/gallery' ? 'text-brand-purple' : ''}`}
             >
@@ -312,7 +296,7 @@ const Navbar = () => {
             )}
             
             <Link 
-              to="/shop" 
+              to="/" 
               className="button-primary mt-4 flex items-center group font-bold"
             >
               <ShoppingBag className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />

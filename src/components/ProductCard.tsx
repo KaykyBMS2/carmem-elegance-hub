@@ -49,7 +49,7 @@ const ProductCard = ({
           </Badge>
         )}
       </div>
-      <h3 className="text-sm font-medium text-gray-800 transition-colors group-hover:text-brand-purple line-clamp-2">
+      <h3 className="text-sm font-medium text-gray-800 transition-colors group-hover:text-brand-purple line-clamp-2 font-montserrat">
         {name}
       </h3>
       <div className="mt-1">

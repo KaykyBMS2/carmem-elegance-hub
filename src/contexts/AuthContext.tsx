@@ -1,4 +1,3 @@
-
 import { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -63,17 +62,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
 
-  // Computed properties
   const isAuthenticated = !!user;
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Load initial session and set up auth state change listener
   useEffect(() => {
     const initialize = async () => {
       setIsLoading(true);
       
       try {
-        // Check for existing session
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -105,7 +101,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     initialize();
     
-    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session?.user?.id || "No session");
       
@@ -118,7 +113,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           await fetchUserProfile(session.user.id);
           await fetchNotifications(session.user.id);
         } else if (event === 'USER_UPDATED') {
-          // Just update the user object
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -135,10 +129,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
   
-  // Check if user is admin or customer
   const checkUserType = async (userId: string) => {
     try {
-      // Check if admin
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
         .select('role')
@@ -151,7 +143,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       setIsAdmin(!!adminData);
       
-      // Check if customer
       const { data: customerData, error: customerError } = await supabase
         .from('user_profiles')
         .select('id')
@@ -170,7 +161,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Fetch user profile data
   const fetchUserProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -193,7 +183,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Fetch user notifications
   const fetchNotifications = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -214,10 +203,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Sign up new user
   const signUp = async (email: string, password: string, userData: Partial<UserProfile>) => {
     try {
-      // 1. First create the user in auth.users
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -232,7 +219,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (data.user) {
         try {
-          // 2. Try to create profile after the user is created
           const { error: profileError } = await supabase
             .from('user_profiles')
             .insert({
@@ -249,11 +235,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           if (profileError) {
             console.error("Profile creation error:", profileError);
-            // Don't return the error, just log it, as the user is created successfully
           }
         } catch (profileCreationError) {
           console.error("Error in profile creation:", profileCreationError);
-          // We don't throw here because the auth user was created successfully
         }
       }
       
@@ -264,7 +248,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Sign in user
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -273,7 +256,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       
       if (!error && data.session) {
-        // Store session in memory
         setUser(data.user);
         setSession(data.session);
         await checkUserType(data.user.id);
@@ -287,7 +269,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Sign out user
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -307,33 +288,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Update user profile
   const updateProfile = async (data: Partial<UserProfile>) => {
-    if (!user || !profile) return { error: new Error('No user logged in') };
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar perfil",
+        description: "Você precisa estar logado para atualizar seu perfil.",
+      });
+      return { error: new Error('No user logged in') };
+    }
     
     try {
-      const { error } = await supabase
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+      
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching user profile:', fetchError);
+        
+        if (!existingProfile) {
+          const { error: createError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: user.id,
+              email: user.email || '',
+              ...data
+            });
+          
+          if (createError) {
+            console.error('Error creating user profile:', createError);
+            return { error: createError };
+          }
+        }
+      }
+      
+      const { error: updateError } = await supabase
         .from('user_profiles')
         .update(data)
         .eq('id', user.id);
       
-      if (!error) {
+      if (!updateError) {
         await fetchUserProfile(user.id);
       }
       
-      return { error };
+      return { error: updateError };
     } catch (error) {
+      console.error('Error in updateProfile:', error);
       return { error };
     }
   };
   
-  // Refresh user profile data
   const refreshProfile = async () => {
     if (!user) return;
     await fetchUserProfile(user.id);
   };
   
-  // Mark notification as read
   const markNotificationAsRead = async (id: string) => {
     if (!user) return;
     
@@ -348,7 +359,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     ));
   };
   
-  // Mark all notifications as read
   const markAllNotificationsAsRead = async () => {
     if (!user) return;
     
@@ -361,7 +371,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setNotifications(notifications.map(n => ({ ...n, read: true })));
   };
   
-  // Refresh notifications
   const refreshNotifications = async () => {
     if (!user) return;
     await fetchNotifications(user.id);
@@ -387,7 +396,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     refreshNotifications
   };
   
-  // Only render children once we've checked authentication status
   if (!authChecked && isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
