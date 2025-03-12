@@ -2,6 +2,7 @@
 import { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
+import { toast } from '@/hooks/use-toast';
 
 interface UserProfile {
   id: string;
@@ -60,6 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCustomer, setIsCustomer] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Computed properties
   const isAuthenticated = !!user;
@@ -72,7 +74,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       try {
         // Check for existing session
-        const { data } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting session:", error);
+          throw error;
+        }
+        
         console.log("Initial session check:", data?.session?.user?.id || "No session");
         
         if (data.session?.user) {
@@ -84,41 +92,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar sessão",
+          description: "Houve um problema ao carregar sua sessão. Por favor, tente novamente.",
+        });
       } finally {
         setIsLoading(false);
+        setAuthChecked(true);
       }
-      
-      // Listen for auth changes
-      const { data: { subscription } } = await supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.id || "No session");
-        
-        if (session?.user) {
-          setUser(session.user);
-          setSession(session);
-          
-          if (event === 'SIGNED_IN') {
-            await checkUserType(session.user.id);
-            await fetchUserProfile(session.user.id);
-            await fetchNotifications(session.user.id);
-          } else if (event === 'USER_UPDATED') {
-            // Just update the user object
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setSession(null);
-          setProfile(null);
-          setNotifications([]);
-          setIsAdmin(false);
-          setIsCustomer(false);
-        }
-      });
-      
-      return () => {
-        subscription.unsubscribe();
-      };
     };
     
     initialize();
+    
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session?.user?.id || "No session");
+      
+      if (session?.user) {
+        setUser(session.user);
+        setSession(session);
+        
+        if (event === 'SIGNED_IN') {
+          await checkUserType(session.user.id);
+          await fetchUserProfile(session.user.id);
+          await fetchNotifications(session.user.id);
+        } else if (event === 'USER_UPDATED') {
+          // Just update the user object
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setNotifications([]);
+        setIsAdmin(false);
+        setIsCustomer(false);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
   
   // Check if user is admin or customer
@@ -259,6 +273,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       
       if (!error && data.session) {
+        // Store session in memory
         setUser(data.user);
         setSession(data.session);
         await checkUserType(data.user.id);
@@ -274,13 +289,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   // Sign out user
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-    setNotifications([]);
-    setIsAdmin(false);
-    setIsCustomer(false);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error signing out:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao sair",
+        description: "Houve um problema ao fazer logout. Por favor, tente novamente.",
+      });
+    } else {
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setNotifications([]);
+      setIsAdmin(false);
+      setIsCustomer(false);
+    }
   };
   
   // Update user profile
@@ -362,6 +386,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     markAllNotificationsAsRead,
     refreshNotifications
   };
+  
+  // Only render children once we've checked authentication status
+  if (!authChecked && isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
+      </div>
+    );
+  }
   
   return (
     <AuthContext.Provider value={value}>

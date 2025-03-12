@@ -1,1202 +1,699 @@
 
-import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import AdminLayout from "@/components/admin/AdminLayout";
-import { toast } from "@/hooks/use-toast";
-import {
-  Save,
-  X,
-  Plus,
-  Trash2,
-  ArrowLeft,
-  Upload,
-  Image,
-  Check,
-  Loader2,
-  AlertCircle
-} from "lucide-react";
-import { 
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect, FormEvent } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
+import AdminLayout from '@/components/admin/AdminLayout';
+import { Trash2, Upload, X, Check } from 'lucide-react';
 
 interface Category {
   id: string;
   name: string;
 }
 
-interface Tag {
-  id: string;
-  name: string;
-}
-
-interface ProductSize {
-  id?: string;
-  size: string;
-  is_universal: boolean;
-}
-
-interface ProductColor {
-  id?: string;
-  color: string;
-  color_code: string;
-}
-
 interface ProductImage {
-  id?: string;
+  id: string;
   image_url: string;
   is_primary: boolean;
-  file?: File;
-  preview?: string;
 }
 
 const ProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const isEditMode = Boolean(id);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [productData, setProductData] = useState({
-    name: "",
-    description: "",
-    regular_price: "",
-    sale_price: "",
-    promotional_price: "",
-    is_rental: false,
-    rental_price: "",
-    material: "",
-    care_instructions: "",
-    size_info: ""
-  });
-
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const isEditing = !!id;
   
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  // Form state
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [regularPrice, setRegularPrice] = useState('');
+  const [salePrice, setSalePrice] = useState('');
+  const [promotionalPrice, setPromotionalPrice] = useState('');
+  const [isRental, setIsRental] = useState(false);
+  const [rentalPrice, setRentalPrice] = useState('');
+  const [material, setMaterial] = useState('');
+  const [sizeInfo, setSizeInfo] = useState('');
+  const [careInstructions, setCareInstructions] = useState('');
+  const [width, setWidth] = useState('');
+  const [height, setHeight] = useState('');
+  const [depth, setDepth] = useState('');
   
-  const [sizes, setSizes] = useState<ProductSize[]>([]);
-  const [newSize, setNewSize] = useState({ size: "", is_universal: false });
-  
-  const [colors, setColors] = useState<ProductColor[]>([]);
-  const [newColor, setNewColor] = useState({ color: "", color_code: "#ffffff" });
-  
+  // Images state
   const [images, setImages] = useState<ProductImage[]>([]);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  const [uploading, setUploading] = useState(false);
+  
+  // Categories state
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  
+  // Loading state
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  
+  // Fetch product data if editing
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
-        const { data, error } = await supabase.from("categories").select("*");
-        if (error) throw error;
-        setCategories(data || []);
+        // Fetch categories
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('*')
+          .order('name');
+          
+        if (categoriesError) throw categoriesError;
+        
+        setCategories(categoriesData);
+        
+        // If editing, fetch product data
+        if (isEditing) {
+          const { data: productData, error: productError } = await supabase
+            .from('products')
+            .select('*')
+            .eq('id', id)
+            .single();
+            
+          if (productError) throw productError;
+          
+          // Set product data
+          setName(productData.name);
+          setDescription(productData.description || '');
+          setRegularPrice(productData.regular_price.toString());
+          setSalePrice(productData.sale_price ? productData.sale_price.toString() : '');
+          setPromotionalPrice(productData.promotional_price ? productData.promotional_price.toString() : '');
+          setIsRental(productData.is_rental || false);
+          setRentalPrice(productData.rental_price ? productData.rental_price.toString() : '');
+          setMaterial(productData.material || '');
+          setSizeInfo(productData.size_info || '');
+          setCareInstructions(productData.care_instructions || '');
+          setWidth(productData.width ? productData.width.toString() : '');
+          setHeight(productData.height ? productData.height.toString() : '');
+          setDepth(productData.depth ? productData.depth.toString() : '');
+          
+          // Fetch product images
+          const { data: imagesData, error: imagesError } = await supabase
+            .from('product_images')
+            .select('*')
+            .eq('product_id', id);
+            
+          if (imagesError) throw imagesError;
+          
+          setImages(imagesData);
+          
+          // Fetch product categories
+          const { data: productCategoriesData, error: productCategoriesError } = await supabase
+            .from('product_categories')
+            .select('category_id')
+            .eq('product_id', id);
+            
+          if (productCategoriesError) throw productCategoriesError;
+          
+          setSelectedCategories(productCategoriesData.map(pc => pc.category_id));
+        }
       } catch (error) {
-        console.error("Error fetching categories:", error);
+        console.error('Error fetching data:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao carregar dados',
+          description: 'Não foi possível carregar os dados do produto.',
+        });
+      } finally {
+        setInitialLoading(false);
       }
     };
-
-    const fetchTags = async () => {
-      try {
-        const { data, error } = await supabase.from("tags").select("*");
-        if (error) throw error;
-        setTags(data || []);
-      } catch (error) {
-        console.error("Error fetching tags:", error);
-      }
-    };
-
-    fetchCategories();
-    fetchTags();
-
-    if (isEditMode) {
-      fetchProduct();
-    }
-  }, [id, isEditMode]);
-
-  const fetchProduct = async () => {
-    if (!id) return;
-
+    
+    fetchData();
+  }, [id, isEditing]);
+  
+  // Handle form submission
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
     setLoading(true);
+    
     try {
-      // Fetch product data
-      const { data: product, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) throw error;
-
-      // Fetch product categories
-      const { data: productCategories, error: categoriesError } = await supabase
-        .from("product_categories")
-        .select("category_id")
-        .eq("product_id", id);
-
-      if (categoriesError) throw categoriesError;
-
-      // Fetch product tags
-      const { data: productTags, error: tagsError } = await supabase
-        .from("product_tags")
-        .select("tag_id")
-        .eq("product_id", id);
-
-      if (tagsError) throw tagsError;
-
-      // Fetch product sizes
-      const { data: productSizes, error: sizesError } = await supabase
-        .from("product_sizes")
-        .select("*")
-        .eq("product_id", id);
-
-      if (sizesError) throw sizesError;
-
-      // Fetch product colors
-      const { data: productColors, error: colorsError } = await supabase
-        .from("product_colors")
-        .select("*")
-        .eq("product_id", id);
-
-      if (colorsError) throw colorsError;
-
-      // Fetch product images
-      const { data: productImages, error: imagesError } = await supabase
-        .from("product_images")
-        .select("*")
-        .eq("product_id", id);
-
-      if (imagesError) throw imagesError;
-
-      // Set product data
-      setProductData({
-        name: product.name || "",
-        description: product.description || "",
-        regular_price: product.regular_price?.toString() || "",
-        sale_price: product.sale_price?.toString() || "",
-        promotional_price: product.promotional_price?.toString() || "",
-        is_rental: product.is_rental || false,
-        rental_price: product.rental_price?.toString() || "",
-        material: product.material || "",
-        care_instructions: product.care_instructions || "",
-        size_info: product.size_info || ""
-      });
-
-      // Set selected categories
-      setSelectedCategories(
-        productCategories ? productCategories.map((pc) => pc.category_id) : []
-      );
-
-      // Set selected tags
-      setSelectedTags(
-        productTags ? productTags.map((pt) => pt.tag_id) : []
-      );
-
-      // Set sizes
-      setSizes(productSizes || []);
-
-      // Set colors
-      setColors(productColors || []);
-
-      // Set images
-      setImages(productImages || []);
-
-    } catch (error: any) {
-      console.error("Error fetching product:", error);
+      const productData = {
+        name,
+        description,
+        regular_price: parseFloat(regularPrice),
+        sale_price: salePrice ? parseFloat(salePrice) : null,
+        promotional_price: promotionalPrice ? parseFloat(promotionalPrice) : null,
+        is_rental: isRental,
+        rental_price: rentalPrice ? parseFloat(rentalPrice) : null,
+        material,
+        size_info: sizeInfo,
+        care_instructions: careInstructions,
+        width: width ? parseFloat(width) : null,
+        height: height ? parseFloat(height) : null,
+        depth: depth ? parseFloat(depth) : null,
+      };
+      
+      let productId = id;
+      
+      if (isEditing) {
+        // Update existing product
+        const { error } = await supabase
+          .from('products')
+          .update(productData)
+          .eq('id', id);
+          
+        if (error) throw error;
+      } else {
+        // Create new product
+        const { data, error } = await supabase
+          .from('products')
+          .insert(productData)
+          .select();
+          
+        if (error) throw error;
+        
+        productId = data[0].id;
+      }
+      
+      // Handle image uploads
+      if (uploadedFiles.length > 0) {
+        await handleImageUpload(productId as string);
+      }
+      
+      // Handle category associations
+      if (isEditing) {
+        // Delete existing category associations
+        await supabase
+          .from('product_categories')
+          .delete()
+          .eq('product_id', productId);
+      }
+      
+      // Insert new category associations
+      if (selectedCategories.length > 0) {
+        const categoryAssociations = selectedCategories.map(categoryId => ({
+          product_id: productId,
+          category_id: categoryId,
+        }));
+        
+        const { error } = await supabase
+          .from('product_categories')
+          .insert(categoryAssociations);
+          
+        if (error) throw error;
+      }
+      
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os dados do produto.",
-        variant: "destructive",
+        title: `Produto ${isEditing ? 'atualizado' : 'cadastrado'} com sucesso`,
+        description: `O produto "${name}" foi ${isEditing ? 'atualizado' : 'cadastrado'} com sucesso.`,
+      });
+      
+      navigate('/admin/products');
+    } catch (error: any) {
+      console.error('Error saving product:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar produto',
+        description: error.message || 'Não foi possível salvar o produto.',
       });
     } finally {
       setLoading(false);
     }
   };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setProductData((prev) => ({ ...prev, [name]: value }));
+  
+  // Handle file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      setUploadedFiles(prev => [...prev, ...filesArray]);
+    }
   };
-
-  const toggleRental = () => {
-    setProductData((prev) => ({ ...prev, is_rental: !prev.is_rental }));
-  };
-
-  const addSize = () => {
-    if (!newSize.size.trim()) return;
-    
-    setSizes((prev) => [...prev, { ...newSize }]);
-    setNewSize({ size: "", is_universal: false });
-  };
-
-  const removeSize = (index: number) => {
-    setSizes((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const addColor = () => {
-    if (!newColor.color.trim()) return;
-    
-    setColors((prev) => [...prev, { ...newColor }]);
-    setNewColor({ color: "", color_code: "#ffffff" });
-  };
-
-  const removeColor = (index: number) => {
-    setColors((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
-    const files = Array.from(e.target.files);
-    const newImages = files.map((file) => ({
-      image_url: "",
-      is_primary: images.length === 0, // First image is primary by default
-      file,
-      preview: URL.createObjectURL(file),
-    }));
-    
-    setImages((prev) => [...prev, ...newImages]);
-  };
-
-  const removeImage = (index: number) => {
-    setImages((prev) => {
-      // Create a copy without the removed image
-      const newImages = prev.filter((_, i) => i !== index);
-      
-      // If removed image was primary and there are other images, set the first one as primary
-      if (prev[index]?.is_primary && newImages.length > 0) {
-        return newImages.map((img, i) => i === 0 ? { ...img, is_primary: true } : img);
-      }
-      
-      return newImages;
-    });
-  };
-
-  const setPrimaryImage = (index: number) => {
-    setImages((prev) =>
-      prev.map((img, i) => ({ ...img, is_primary: i === index }))
-    );
-  };
-
-  const uploadImages = async (productId: string) => {
-    const imagesToUpload = images.filter((img) => img.file);
-    
-    if (imagesToUpload.length === 0) return [];
-    
-    setIsUploading(true);
-    const uploadedImages = [];
-    
-    try {
-      for (let i = 0; i < imagesToUpload.length; i++) {
-        const img = imagesToUpload[i];
-        if (!img.file) continue;
-        
-        // Calculate progress
-        const progress = Math.round(((i + 1) / imagesToUpload.length) * 100);
-        setUploadProgress(progress);
-        
+  
+  // Handle image upload
+  const handleImageUpload = async (productId: string) => {
+    setUploading(true);
+    const uploadPromises = uploadedFiles.map(async (file, index) => {
+      try {
         // Create a unique file name
-        const fileName = `${productId}/${Date.now()}-${img.file.name.replace(/\s/g, "_")}`;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${index}.${fileExt}`;
+        const filePath = `products/${productId}/${fileName}`;
         
-        // Upload to Supabase storage
-        const { data, error } = await supabase.storage
-          .from("product-images")
-          .upload(fileName, img.file);
-        
-        if (error) throw error;
+        // Upload file to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+            onUploadProgress: (progress) => {
+              setUploadProgress(prev => ({
+                ...prev,
+                [file.name]: Math.round((progress.loaded / progress.total) * 100),
+              }));
+            },
+          });
+          
+        if (uploadError) throw uploadError;
         
         // Get public URL
-        const { data: urlData } = supabase.storage
-          .from("product-images")
-          .getPublicUrl(fileName);
-        
-        uploadedImages.push({
-          image_url: urlData.publicUrl,
-          is_primary: img.is_primary,
-        });
-      }
-      
-      return uploadedImages;
-    } catch (error) {
-      console.error("Error uploading images:", error);
-      throw error;
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
-  };
-
-  const saveProduct = async () => {
-    // Basic validation
-    if (!productData.name.trim()) {
-      toast({
-        title: "Erro",
-        description: "O nome do produto é obrigatório.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!productData.regular_price) {
-      toast({
-        title: "Erro",
-        description: "O preço regular é obrigatório.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (productData.is_rental && !productData.rental_price) {
-      toast({
-        title: "Erro",
-        description: "O preço de aluguel é obrigatório para produtos de aluguel.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setSaving(true);
-    
-    try {
-      // Save product data
-      let productId = id;
-      
-      if (isEditMode) {
-        // Update existing product
-        const { error } = await supabase
-          .from("products")
-          .update({
-            name: productData.name,
-            description: productData.description,
-            regular_price: parseFloat(productData.regular_price),
-            sale_price: productData.sale_price ? parseFloat(productData.sale_price) : null,
-            promotional_price: productData.promotional_price ? parseFloat(productData.promotional_price) : null,
-            is_rental: productData.is_rental,
-            rental_price: productData.rental_price ? parseFloat(productData.rental_price) : null,
-            material: productData.material || null,
-            care_instructions: productData.care_instructions || null,
-            size_info: productData.size_info || null
-          })
-          .eq("id", id);
-        
-        if (error) throw error;
-      } else {
-        // Create new product
-        const { data, error } = await supabase
-          .from("products")
+        const { data: publicURLData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+          
+        // Insert image record in database
+        const { error: insertError } = await supabase
+          .from('product_images')
           .insert({
-            name: productData.name,
-            description: productData.description,
-            regular_price: parseFloat(productData.regular_price),
-            sale_price: productData.sale_price ? parseFloat(productData.sale_price) : null,
-            promotional_price: productData.promotional_price ? parseFloat(productData.promotional_price) : null,
-            is_rental: productData.is_rental,
-            rental_price: productData.rental_price ? parseFloat(productData.rental_price) : null,
-            material: productData.material || null,
-            care_instructions: productData.care_instructions || null,
-            size_info: productData.size_info || null
-          })
-          .select("id")
-          .single();
-        
-        if (error) throw error;
-        productId = data.id;
-      }
-      
-      if (!productId) throw new Error("Product ID is missing");
-      
-      // Upload new images
-      let newUploadedImages: any[] = [];
-      if (images.some((img) => img.file)) {
-        newUploadedImages = await uploadImages(productId);
-      }
-      
-      // Save images metadata to database
-      if (isEditMode) {
-        // Delete existing images first (only DB records, not actual files)
-        const existingImageIds = images
-          .filter((img) => img.id)
-          .map((img) => img.id);
-        
-        // Delete images not in the current list
-        if (existingImageIds.length > 0) {
-          const { error } = await supabase
-            .from("product_images")
-            .delete()
-            .eq("product_id", productId)
-            .not("id", "in", `(${existingImageIds.join(",")})`);
+            product_id: productId,
+            image_url: publicURLData.publicUrl,
+            is_primary: index === 0 && images.length === 0, // First uploaded image is primary if no existing images
+          });
           
-          if (error) throw error;
-          
-          // Update existing images (e.g., is_primary status)
-          for (const img of images.filter((img) => img.id)) {
-            const { error } = await supabase
-              .from("product_images")
-              .update({ is_primary: img.is_primary })
-              .eq("id", img.id);
-            
-            if (error) throw error;
-          }
-        }
-      } else {
-        // For new products, all images were just uploaded
+        if (insertError) throw insertError;
+        
+        return true;
+      } catch (error) {
+        console.error(`Error uploading file ${file.name}:`, error);
+        return false;
       }
-      
-      // Insert new uploaded images
-      if (newUploadedImages.length > 0) {
-        const imagesToInsert = newUploadedImages.map((img) => ({
-          product_id: productId,
-          image_url: img.image_url,
-          is_primary: img.is_primary,
-        }));
+    });
+    
+    await Promise.all(uploadPromises);
+    setUploading(false);
+    setUploadedFiles([]);
+    setUploadProgress({});
+    
+    // Refresh images
+    if (productId) {
+      const { data } = await supabase
+        .from('product_images')
+        .select('*')
+        .eq('product_id', productId);
         
-        const { error } = await supabase
-          .from("product_images")
-          .insert(imagesToInsert);
-        
-        if (error) throw error;
-      }
-      
-      // Handle categories
-      if (isEditMode) {
-        // Delete existing categories
-        const { error: deleteCategoriesError } = await supabase
-          .from("product_categories")
-          .delete()
-          .eq("product_id", productId);
-        
-        if (deleteCategoriesError) throw deleteCategoriesError;
-      }
-      
-      // Insert categories
-      if (selectedCategories.length > 0) {
-        const categoriesToInsert = selectedCategories.map((categoryId) => ({
-          product_id: productId,
-          category_id: categoryId,
-        }));
-        
-        const { error: insertCategoriesError } = await supabase
-          .from("product_categories")
-          .insert(categoriesToInsert);
-        
-        if (insertCategoriesError) throw insertCategoriesError;
-      }
-      
-      // Handle tags
-      if (isEditMode) {
-        // Delete existing tags
-        const { error: deleteTagsError } = await supabase
-          .from("product_tags")
-          .delete()
-          .eq("product_id", productId);
-        
-        if (deleteTagsError) throw deleteTagsError;
-      }
-      
-      // Insert tags
-      if (selectedTags.length > 0) {
-        const tagsToInsert = selectedTags.map((tagId) => ({
-          product_id: productId,
-          tag_id: tagId,
-        }));
-        
-        const { error: insertTagsError } = await supabase
-          .from("product_tags")
-          .insert(tagsToInsert);
-        
-        if (insertTagsError) throw insertTagsError;
-      }
-      
-      // Handle sizes
-      if (isEditMode) {
-        // Delete existing sizes
-        const { error: deleteSizesError } = await supabase
-          .from("product_sizes")
-          .delete()
-          .eq("product_id", productId);
-        
-        if (deleteSizesError) throw deleteSizesError;
-      }
-      
-      // Insert sizes
-      if (sizes.length > 0) {
-        const sizesToInsert = sizes.map((size) => ({
-          product_id: productId,
-          size: size.size,
-          is_universal: size.is_universal,
-        }));
-        
-        const { error: insertSizesError } = await supabase
-          .from("product_sizes")
-          .insert(sizesToInsert);
-        
-        if (insertSizesError) throw insertSizesError;
-      }
-      
-      // Handle colors
-      if (isEditMode) {
-        // Delete existing colors
-        const { error: deleteColorsError } = await supabase
-          .from("product_colors")
-          .delete()
-          .eq("product_id", productId);
-        
-        if (deleteColorsError) throw deleteColorsError;
-      }
-      
-      // Insert colors
-      if (colors.length > 0) {
-        const colorsToInsert = colors.map((color) => ({
-          product_id: productId,
-          color: color.color,
-          color_code: color.color_code,
-        }));
-        
-        const { error: insertColorsError } = await supabase
-          .from("product_colors")
-          .insert(colorsToInsert);
-        
-        if (insertColorsError) throw insertColorsError;
-      }
-      
-      toast({
-        title: isEditMode ? "Produto atualizado" : "Produto criado",
-        description: isEditMode
-          ? "O produto foi atualizado com sucesso."
-          : "O produto foi criado com sucesso.",
-      });
-      
-      // Navigate back to products list
-      navigate("/admin/products");
-    } catch (error: any) {
-      console.error("Error saving product:", error);
-      toast({
-        title: "Erro",
-        description: error.message || "Não foi possível salvar o produto.",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
+      if (data) setImages(data);
     }
   };
-
-  if (loading) {
+  
+  // Handle image deletion
+  const handleDeleteImage = async (imageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('product_images')
+        .delete()
+        .eq('id', imageId);
+        
+      if (error) throw error;
+      
+      setImages(prev => prev.filter(img => img.id !== imageId));
+      
+      toast({
+        title: 'Imagem excluída',
+        description: 'A imagem foi excluída com sucesso.',
+      });
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao excluir imagem',
+        description: 'Não foi possível excluir a imagem.',
+      });
+    }
+  };
+  
+  // Handle setting an image as primary
+  const handleSetPrimary = async (imageId: string) => {
+    try {
+      // First, set all images as not primary
+      await supabase
+        .from('product_images')
+        .update({ is_primary: false })
+        .eq('product_id', id);
+        
+      // Then, set the selected image as primary
+      const { error } = await supabase
+        .from('product_images')
+        .update({ is_primary: true })
+        .eq('id', imageId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setImages(prev => 
+        prev.map(img => ({
+          ...img,
+          is_primary: img.id === imageId,
+        }))
+      );
+      
+      toast({
+        title: 'Imagem principal atualizada',
+        description: 'A imagem principal foi atualizada com sucesso.',
+      });
+    } catch (error) {
+      console.error('Error setting primary image:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao definir imagem principal',
+        description: 'Não foi possível definir a imagem principal.',
+      });
+    }
+  };
+  
+  // Handle category selection
+  const handleCategoryChange = (categoryId: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+  
+  // Handle file removal from upload queue
+  const handleRemoveFile = (fileName: string) => {
+    setUploadedFiles(prev => prev.filter(file => file.name !== fileName));
+    
+    const newProgress = { ...uploadProgress };
+    delete newProgress[fileName];
+    setUploadProgress(newProgress);
+  };
+  
+  if (initialLoading) {
     return (
-      <AdminLayout title={isEditMode ? "Editar Produto" : "Novo Produto"}>
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-purple"></div>
         </div>
       </AdminLayout>
     );
   }
-
+  
   return (
-    <AdminLayout title={isEditMode ? "Editar Produto" : "Novo Produto"}>
-      <div className="mb-6">
-        <Button
-          variant="outline"
-          onClick={() => navigate("/admin/products")}
-          className="gap-1"
-        >
-          <ArrowLeft size={16} />
-          Voltar para Produtos
-        </Button>
-      </div>
-
-      <Tabs defaultValue="basic">
-        <div className="mb-6">
-          <TabsList className="grid w-full grid-cols-6 md:grid-cols-6">
-            <TabsTrigger value="basic">Informações Básicas</TabsTrigger>
-            <TabsTrigger value="details">Detalhes</TabsTrigger>
-            <TabsTrigger value="pricing">Preços</TabsTrigger>
-            <TabsTrigger value="categorization">Categorias e Tags</TabsTrigger>
-            <TabsTrigger value="attributes">Atributos</TabsTrigger>
-            <TabsTrigger value="images">Imagens</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <div className="space-y-6">
-          {/* Basic Information */}
-          <TabsContent value="basic">
-            <Card>
-              <CardHeader>
-                <CardTitle>Informações Básicas</CardTitle>
-                <CardDescription>
-                  Defina as informações básicas do produto.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Produto *</Label>
+    <AdminLayout>
+      <div className="container mx-auto py-8 px-4">
+        <h1 className="text-2xl font-bold mb-6">
+          {isEditing ? 'Editar Produto' : 'Novo Produto'}
+        </h1>
+        
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Product Information */}
+            <div className="space-y-6">
+              <div>
+                <Label htmlFor="name">Nome do Produto *</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="is-rental"
+                  checked={isRental}
+                  onCheckedChange={setIsRental}
+                />
+                <Label htmlFor="is-rental">Disponível para Aluguel</Label>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="regular-price">Preço Regular *</Label>
                   <Input
-                    id="name"
-                    name="name"
-                    value={productData.name}
-                    onChange={handleChange}
-                    placeholder="Digite o nome do produto"
+                    id="regular-price"
+                    type="number"
+                    step="0.01"
+                    value={regularPrice}
+                    onChange={(e) => setRegularPrice(e.target.value)}
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={productData.description}
-                    onChange={handleChange}
-                    rows={5}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
-                    placeholder="Digite a descrição do produto"
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="is_rental"
-                    checked={productData.is_rental}
-                    onCheckedChange={toggleRental}
-                  />
-                  <Label htmlFor="is_rental">Produto para Aluguel</Label>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Product Details */}
-          <TabsContent value="details">
-            <Card>
-              <CardHeader>
-                <CardTitle>Detalhes do Produto</CardTitle>
-                <CardDescription>
-                  Adicione informações detalhadas sobre o produto.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="material">Material</Label>
+                
+                <div>
+                  <Label htmlFor="sale-price">Preço Promocional</Label>
                   <Input
-                    id="material"
-                    name="material"
-                    value={productData.material}
-                    onChange={handleChange}
-                    placeholder="Ex: Algodão, Poliéster, Linho, etc."
+                    id="sale-price"
+                    type="number"
+                    step="0.01"
+                    value={salePrice}
+                    onChange={(e) => setSalePrice(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="care_instructions">Instruções de Cuidado</Label>
-                  <textarea
-                    id="care_instructions"
-                    name="care_instructions"
-                    value={productData.care_instructions}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
-                    placeholder="Ex: Lavar à mão, Não usar alvejante, etc."
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="promotional-price">Preço Super Oferta</Label>
+                  <Input
+                    id="promotional-price"
+                    type="number"
+                    step="0.01"
+                    value={promotionalPrice}
+                    onChange={(e) => setPromotionalPrice(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="size_info">Informações de Tamanho</Label>
-                  <textarea
-                    id="size_info"
-                    name="size_info"
-                    value={productData.size_info}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
-                    placeholder="Ex: P (36-38), M (40-42), G (44-46)"
+                
+                <div>
+                  <Label htmlFor="rental-price">Preço de Aluguel</Label>
+                  <Input
+                    id="rental-price"
+                    type="number"
+                    step="0.01"
+                    value={rentalPrice}
+                    onChange={(e) => setRentalPrice(e.target.value)}
+                    disabled={!isRental}
                   />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Pricing */}
-          <TabsContent value="pricing">
-            <Card>
-              <CardHeader>
-                <CardTitle>Preços</CardTitle>
-                <CardDescription>
-                  Configure os preços do produto.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="regular_price">Preço Regular *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-gray-500">
-                      R$
-                    </span>
+              </div>
+              
+              <div>
+                <Label htmlFor="material">Material</Label>
+                <Input
+                  id="material"
+                  value={material}
+                  onChange={(e) => setMaterial(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="size-info">Informações de Tamanho</Label>
+                <Input
+                  id="size-info"
+                  value={sizeInfo}
+                  onChange={(e) => setSizeInfo(e.target.value)}
+                />
+              </div>
+              
+              {/* Product Dimensions */}
+              <div>
+                <Label className="block mb-2">Dimensões do Produto</Label>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="width" className="text-sm text-gray-500">Largura (cm)</Label>
                     <Input
-                      id="regular_price"
-                      name="regular_price"
+                      id="width"
                       type="number"
-                      min="0"
-                      step="0.01"
-                      value={productData.regular_price}
-                      onChange={handleChange}
-                      className="pl-9"
-                      placeholder="0.00"
-                      required
+                      step="0.1"
+                      value={width}
+                      onChange={(e) => setWidth(e.target.value)}
+                      placeholder="0.0"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="height" className="text-sm text-gray-500">Altura (cm)</Label>
+                    <Input
+                      id="height"
+                      type="number"
+                      step="0.1"
+                      value={height}
+                      onChange={(e) => setHeight(e.target.value)}
+                      placeholder="0.0"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="depth" className="text-sm text-gray-500">Profundidade (cm)</Label>
+                    <Input
+                      id="depth"
+                      type="number"
+                      step="0.1"
+                      value={depth}
+                      onChange={(e) => setDepth(e.target.value)}
+                      placeholder="0.0"
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sale_price">Preço de Venda</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-gray-500">
-                      R$
-                    </span>
-                    <Input
-                      id="sale_price"
-                      name="sale_price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={productData.sale_price}
-                      onChange={handleChange}
-                      className="pl-9"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="promotional_price">Preço Promocional</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-gray-500">
-                      R$
-                    </span>
-                    <Input
-                      id="promotional_price"
-                      name="promotional_price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={productData.promotional_price}
-                      onChange={handleChange}
-                      className="pl-9"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                {productData.is_rental && (
-                  <div className="space-y-2">
-                    <Label htmlFor="rental_price">Preço de Aluguel *</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-gray-500">
-                        R$
-                      </span>
-                      <Input
-                        id="rental_price"
-                        name="rental_price"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={productData.rental_price}
-                        onChange={handleChange}
-                        className="pl-9"
-                        placeholder="0.00"
-                        required={productData.is_rental}
-                      />
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Categorization */}
-          <TabsContent value="categorization">
-            <Card>
-              <CardHeader>
-                <CardTitle>Categorias e Tags</CardTitle>
-                <CardDescription>
-                  Defina as categorias e tags do produto.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="categories">Categorias</Label>
-                  <Select
-                    onValueChange={(value) => {
-                      if (!selectedCategories.includes(value)) {
-                        setSelectedCategories((prev) => [...prev, value]);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione categorias" />
-                    </SelectTrigger>
-                    <SelectContent>
+              </div>
+              
+              <div>
+                <Label htmlFor="care-instructions">Instruções de Cuidado</Label>
+                <Textarea
+                  id="care-instructions"
+                  value={careInstructions}
+                  onChange={(e) => setCareInstructions(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+            
+            {/* Categories and Images */}
+            <div className="space-y-6">
+              <div>
+                <Label className="block mb-2">Categorias</Label>
+                <div className="border rounded-md p-4 max-h-60 overflow-y-auto">
+                  {categories.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
                       {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
+                        <label key={category.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedCategories.includes(category.id)}
+                            onChange={() => handleCategoryChange(category.id)}
+                            className="rounded border-gray-300 text-brand-purple focus:ring-brand-purple"
+                          />
+                          <span>{category.name}</span>
+                        </label>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {selectedCategories.map((categoryId) => {
-                      const category = categories.find((c) => c.id === categoryId);
-                      return (
-                        <Badge key={categoryId} variant="secondary" className="gap-1">
-                          {category?.name}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSelectedCategories((prev) =>
-                                prev.filter((id) => id !== categoryId)
-                              )
-                            }
-                            className="ml-1 rounded-full p-0.5 hover:bg-gray-200"
-                          >
-                            <X size={12} />
-                          </button>
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tags">Tags</Label>
-                  <Select
-                    onValueChange={(value) => {
-                      if (!selectedTags.includes(value)) {
-                        setSelectedTags((prev) => [...prev, value]);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione tags" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tags.map((tag) => (
-                        <SelectItem key={tag.id} value={tag.id}>
-                          {tag.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {selectedTags.map((tagId) => {
-                      const tag = tags.find((t) => t.id === tagId);
-                      return (
-                        <Badge key={tagId} variant="outline" className="gap-1">
-                          {tag?.name}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSelectedTags((prev) =>
-                                prev.filter((id) => id !== tagId)
-                              )
-                            }
-                            className="ml-1 rounded-full p-0.5 hover:bg-gray-200"
-                          >
-                            <X size={12} />
-                          </button>
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Attributes */}
-          <TabsContent value="attributes">
-            <Card>
-              <CardHeader>
-                <CardTitle>Atributos</CardTitle>
-                <CardDescription>
-                  Defina os tamanhos e cores disponíveis para o produto.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Sizes */}
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Tamanhos</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {sizes.map((size, index) => (
-                      <Badge
-                        key={index}
-                        variant="outline"
-                        className={`gap-1 ${
-                          size.is_universal ? "border-brand-purple bg-brand-purple/10" : ""
-                        }`}
-                      >
-                        {size.size}
-                        {size.is_universal && " (Universal)"}
-                        <button
-                          type="button"
-                          onClick={() => removeSize(index)}
-                          className="ml-1 rounded-full p-0.5 hover:bg-gray-200"
-                        >
-                          <X size={12} />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex items-end gap-2">
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor="size">Novo Tamanho</Label>
-                      <Input
-                        id="size"
-                        value={newSize.size}
-                        onChange={(e) =>
-                          setNewSize((prev) => ({ ...prev, size: e.target.value }))
-                        }
-                        placeholder="Ex: P, M, L, XL, 38, 40, etc."
-                      />
                     </div>
-                    <div className="mb-0.5 flex items-center space-x-2">
-                      <Switch
-                        id="is_universal_size"
-                        checked={newSize.is_universal}
-                        onCheckedChange={(checked) =>
-                          setNewSize((prev) => ({ ...prev, is_universal: checked }))
-                        }
-                      />
-                      <Label htmlFor="is_universal_size">Universal</Label>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={addSize}
-                      disabled={!newSize.size.trim()}
-                      size="sm"
-                      className="mb-0.5"
-                    >
-                      <Plus size={16} className="mr-1" />
-                      Adicionar
-                    </Button>
-                  </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">Nenhuma categoria disponível.</p>
+                  )}
                 </div>
-
-                {/* Colors */}
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Cores</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {colors.map((color, index) => (
-                      <Badge
-                        key={index}
-                        variant="outline"
-                        className="gap-1"
-                      >
-                        <span
-                          className="inline-block h-3 w-3 rounded-full"
-                          style={{ backgroundColor: color.color_code }}
-                        ></span>
-                        {color.color}
-                        <button
-                          type="button"
-                          onClick={() => removeColor(index)}
-                          className="ml-1 rounded-full p-0.5 hover:bg-gray-200"
-                        >
-                          <X size={12} />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex items-end gap-2">
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor="color">Nova Cor</Label>
-                      <Input
-                        id="color"
-                        value={newColor.color}
-                        onChange={(e) =>
-                          setNewColor((prev) => ({ ...prev, color: e.target.value }))
-                        }
-                        placeholder="Ex: Azul, Vermelho, Verde, etc."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="color_code">Código da Cor</Label>
-                      <Input
-                        id="color_code"
-                        type="color"
-                        value={newColor.color_code}
-                        onChange={(e) =>
-                          setNewColor((prev) => ({
-                            ...prev,
-                            color_code: e.target.value,
-                          }))
-                        }
-                        className="h-10 w-20 p-1"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={addColor}
-                      disabled={!newColor.color.trim()}
-                      size="sm"
-                      className="mb-0.5"
-                    >
-                      <Plus size={16} className="mr-1" />
-                      Adicionar
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Images */}
-          <TabsContent value="images">
-            <Card>
-              <CardHeader>
-                <CardTitle>Imagens do Produto</CardTitle>
-                <CardDescription>
-                  Adicione e gerencie as imagens do produto.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                  {images.map((image, index) => (
-                    <div
-                      key={index}
-                      className="relative aspect-square overflow-hidden rounded-md border"
-                    >
-                      <img
-                        src={image.preview || image.image_url}
-                        alt={`Produto ${index + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity hover:opacity-100">
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="bg-white"
-                            onClick={() => setPrimaryImage(index)}
-                            disabled={image.is_primary}
-                          >
-                            {image.is_primary ? (
-                              <Check size={16} className="text-green-500" />
-                            ) : (
-                              "Principal"
+              </div>
+              
+              <div>
+                <Label className="block mb-2">Imagens do Produto</Label>
+                
+                {/* Current Images */}
+                {images.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium mb-2">Imagens atuais</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {images.map((image) => (
+                        <div key={image.id} className="relative group">
+                          <div className={`aspect-square rounded-md overflow-hidden border-2 ${image.is_primary ? 'border-brand-purple' : 'border-gray-200'}`}>
+                            <img
+                              src={image.image_url}
+                              alt="Product"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-md">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteImage(image.id)}
+                              className="p-1.5 bg-red-500 text-white rounded-full m-1"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            {!image.is_primary && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetPrimary(image.id)}
+                                className="p-1.5 bg-brand-purple text-white rounded-full m-1"
+                                title="Definir como imagem principal"
+                              >
+                                <Check size={14} />
+                              </button>
                             )}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="bg-white text-red-500 hover:bg-red-50 hover:text-red-600"
-                            onClick={() => removeImage(index)}
-                          >
-                            <Trash2 size={16} />
-                          </Button>
+                          </div>
+                          {image.is_primary && (
+                            <div className="absolute top-1 right-1 bg-brand-purple text-white text-xs px-1.5 py-0.5 rounded-sm">
+                              Principal
+                            </div>
+                          )}
                         </div>
-                      </div>
-                      {image.is_primary && (
-                        <div className="absolute left-2 top-2 rounded-md bg-brand-purple px-2 py-1 text-xs text-white">
-                          Principal
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  <div className="flex aspect-square items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50">
-                    <input
-                      type="file"
-                      id="image-upload"
-                      ref={fileInputRef}
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageSelect}
-                      className="hidden"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex flex-col gap-2 p-8"
-                    >
-                      <Upload size={24} />
-                      <span className="text-sm">Adicionar Imagens</span>
-                    </Button>
-                  </div>
-                </div>
-
-                {isUploading && (
-                  <div className="mt-4 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium">
-                        Enviando imagens...
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {uploadProgress}%
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-gray-200">
-                      <div
-                        className="h-2 rounded-full bg-brand-purple"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
+                      ))}
                     </div>
                   </div>
                 )}
-
-                <div className="mt-4">
-                  <div className="rounded-md bg-yellow-50 p-4">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <AlertCircle className="h-5 w-5 text-yellow-400" />
-                      </div>
-                      <div className="ml-3">
-                        <h3 className="text-sm font-medium text-yellow-800">
-                          Atenção
-                        </h3>
-                        <div className="mt-2 text-sm text-yellow-700">
-                          <p>
-                            As imagens só serão salvas quando você clicar em{" "}
-                            <strong>Salvar Produto</strong>. Certifique-se de
-                            marcar uma imagem como principal.
-                          </p>
-                        </div>
-                      </div>
+                
+                {/* Upload New Images */}
+                <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center">
+                  <div className="space-y-2">
+                    <Upload className="mx-auto h-10 w-10 text-gray-400" />
+                    <div className="text-sm text-gray-600">
+                      <label htmlFor="file-upload" className="cursor-pointer text-brand-purple font-medium hover:underline">
+                        Clique para selecionar
+                      </label>
+                      <span> ou arraste e solte imagens aqui</span>
+                      <input
+                        id="file-upload"
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
                     </div>
+                    <p className="text-xs text-gray-500">
+                      {images.length === 0 
+                        ? 'A primeira imagem adicionada será a imagem principal do produto'
+                        : 'Você pode definir uma imagem como principal após o upload'}
+                    </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </div>
-      </Tabs>
-
-      <div className="mt-8 flex justify-end">
-        <Button
-          type="button"
-          onClick={saveProduct}
-          disabled={saving}
-          className="gap-2"
-        >
-          {saving ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <Save size={16} />
-          )}
-          {saving ? "Salvando..." : "Salvar Produto"}
-        </Button>
+                
+                {/* Upload Queue */}
+                {uploadedFiles.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <h3 className="text-sm font-medium">Arquivos para upload</h3>
+                    {uploadedFiles.map((file, index) => (
+                      <div key={file.name} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
+                        <div className="flex items-center space-x-3">
+                          <span className="bg-brand-purple text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">
+                            {index + 1}
+                          </span>
+                          <span className="text-sm truncate max-w-[150px]">{file.name}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {uploadProgress[file.name] > 0 && (
+                            <span className="text-xs text-gray-500">{uploadProgress[file.name]}%</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(file.name)}
+                            className="p-1 text-gray-400 hover:text-red-500"
+                            disabled={uploading}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/admin/products')}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"></div>
+              ) : (
+                isEditing ? 'Atualizar Produto' : 'Cadastrar Produto'
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
     </AdminLayout>
   );

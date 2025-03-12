@@ -11,6 +11,10 @@ const Shop = () => {
   const [products, setProducts] = useState<ProductCardProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('newest'); // newest, priceAsc, priceDesc
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [filterBy, setFilterBy] = useState<string[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -73,9 +77,9 @@ const Shop = () => {
     fetchProducts();
   }, []);
 
-  // Filter products based on search query
-  const filteredProducts = () => {
-    if (!products) return [];
+  // Filter and sort products
+  const processedProducts = () => {
+    if (!products.length) return [];
     
     let result = [...products];
     
@@ -89,11 +93,37 @@ const Shop = () => {
       );
     }
     
-    return result;
+    // Filter by type (if filters are selected)
+    if (filterBy.length > 0) {
+      result = result.filter(product => {
+        if (filterBy.includes('rental') && product.isRental) return true;
+        if (filterBy.includes('sale') && !product.isRental) return true;
+        return false;
+      });
+    }
+    
+    // Sort products
+    switch (sortBy) {
+      case 'priceAsc':
+        return result.sort((a, b) => Number(a.price) - Number(b.price));
+      case 'priceDesc':
+        return result.sort((a, b) => Number(b.price) - Number(a.price));
+      case 'newest':
+      default:
+        return result;
+    }
   };
 
   const handleProductClick = (productId: string) => {
     navigate(`/product/${productId}`);
+  };
+
+  const toggleFilter = (filter: string) => {
+    if (filterBy.includes(filter)) {
+      setFilterBy(filterBy.filter(f => f !== filter));
+    } else {
+      setFilterBy([...filterBy, filter]);
+    }
   };
 
   return (
@@ -124,16 +154,89 @@ const Shop = () => {
           </div>
           
           <div className="flex gap-2">
-            <button className="px-4 py-2 flex items-center gap-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors">
-              <Filter className="h-4 w-4" />
-              <span className="hidden sm:inline">Filtros</span>
-              <ChevronDown className="h-4 w-4" />
-            </button>
-            <button className="px-4 py-2 flex items-center gap-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors">
-              <SlidersHorizontal className="h-4 w-4" />
-              <span className="hidden sm:inline">Ordenar</span>
-              <ChevronDown className="h-4 w-4" />
-            </button>
+            {/* Filter dropdown */}
+            <div className="relative">
+              <button 
+                className="px-4 py-2 flex items-center gap-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              >
+                <Filter className="h-4 w-4" />
+                <span className="hidden sm:inline">Filtros</span>
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              
+              {showFilterDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg overflow-hidden z-10">
+                  <div className="p-3">
+                    <div className="mb-2 font-medium text-sm text-gray-600">Tipo de Produto</div>
+                    <div className="space-y-2">
+                      <label className="flex items-center text-sm cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-gray-300 text-brand-purple mr-2"
+                          checked={filterBy.includes('sale')}
+                          onChange={() => toggleFilter('sale')}
+                        />
+                        Produtos para Venda
+                      </label>
+                      <label className="flex items-center text-sm cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-gray-300 text-brand-purple mr-2"
+                          checked={filterBy.includes('rental')}
+                          onChange={() => toggleFilter('rental')}
+                        />
+                        Produtos para Aluguel
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Sort dropdown */}
+            <div className="relative">
+              <button 
+                className="px-4 py-2 flex items-center gap-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                onClick={() => setShowSortDropdown(!showSortDropdown)}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="hidden sm:inline">Ordenar</span>
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              
+              {showSortDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg overflow-hidden z-10">
+                  <button 
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${sortBy === 'newest' ? 'font-semibold text-brand-purple' : ''}`}
+                    onClick={() => {
+                      setSortBy('newest');
+                      setShowSortDropdown(false);
+                    }}
+                  >
+                    Mais Recentes
+                  </button>
+                  <button 
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${sortBy === 'priceAsc' ? 'font-semibold text-brand-purple' : ''}`}
+                    onClick={() => {
+                      setSortBy('priceAsc');
+                      setShowSortDropdown(false);
+                    }}
+                  >
+                    Preço: Menor para Maior
+                  </button>
+                  <button 
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${sortBy === 'priceDesc' ? 'font-semibold text-brand-purple' : ''}`}
+                    onClick={() => {
+                      setSortBy('priceDesc');
+                      setShowSortDropdown(false);
+                    }}
+                  >
+                    Preço: Maior para Menor
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -142,9 +245,9 @@ const Shop = () => {
           <div className="flex justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-purple"></div>
           </div>
-        ) : filteredProducts().length > 0 ? (
+        ) : processedProducts().length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {filteredProducts().map((product) => (
+            {processedProducts().map((product) => (
               <div 
                 key={product.id} 
                 onClick={() => handleProductClick(product.id)}
