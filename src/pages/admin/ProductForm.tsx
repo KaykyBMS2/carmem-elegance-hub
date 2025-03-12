@@ -1,4 +1,3 @@
-
 import { useState, useEffect, FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -244,12 +243,6 @@ const ProductForm = () => {
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: false,
-            onUploadProgress: (progress) => {
-              setUploadProgress(prev => ({
-                ...prev,
-                [file.name]: Math.round((progress.loaded / progress.total) * 100),
-              }));
-            },
           });
           
         if (uploadError) throw uploadError;
@@ -378,7 +371,7 @@ const ProductForm = () => {
   
   if (initialLoading) {
     return (
-      <AdminLayout>
+      <AdminLayout title={isEditing ? 'Carregando produto...' : 'Novo Produto'}>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-purple"></div>
         </div>
@@ -387,7 +380,7 @@ const ProductForm = () => {
   }
   
   return (
-    <AdminLayout>
+    <AdminLayout title={isEditing ? 'Editar Produto' : 'Novo Produto'}>
       <div className="container mx-auto py-8 px-4">
         <h1 className="text-2xl font-bold mb-6">
           {isEditing ? 'Editar Produto' : 'Novo Produto'}
@@ -700,3 +693,4 @@ const ProductForm = () => {
 };
 
 export default ProductForm;
+

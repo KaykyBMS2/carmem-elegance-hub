@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Box, Ruler, ShoppingBag, Heart, Clock } from 'lucide-react';
@@ -8,7 +7,6 @@ import Footer from '@/components/Footer';
 import ProductImageGallery from '@/components/ProductImageGallery';
 import ProductRelatedItems from '@/components/ProductRelatedItems';
 
-// Define the Product type with dimensions
 interface Product {
   id: string;
   name: string;
@@ -49,7 +47,6 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        // Fetch product details
         const { data: productData, error: productError } = await supabase
           .from('products')
           .select('*')
@@ -61,12 +58,11 @@ const ProductDetail = () => {
           return;
         }
 
-        // Fetch product images
         const { data: imageData, error: imageError } = await supabase
           .from('product_images')
           .select('*')
           .eq('product_id', id)
-          .order('is_primary', { ascending: false }); // Order by is_primary to put primary images first
+          .order('is_primary', { ascending: false });
 
         if (imageError) {
           console.error('Error fetching product images:', imageError);
@@ -127,23 +123,19 @@ const ProductDetail = () => {
       <Navbar />
       
       <main className="flex-grow pt-24 pb-16 container mx-auto px-4">
-        {/* Back button */}
         <Link to="/shop" className="inline-flex items-center text-gray-600 hover:text-brand-purple mb-6">
           <ArrowLeft className="h-4 w-4 mr-2" />
           <span>Voltar para a loja</span>
         </Link>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-          {/* Product Images */}
           <div>
             <ProductImageGallery images={images} />
           </div>
           
-          {/* Product Info */}
           <div className="flex flex-col">
             <h1 className="text-3xl font-montserrat font-bold text-gray-800">{product.name}</h1>
             
-            {/* Pricing */}
             <div className="mt-4 space-y-1">
               {product.is_rental ? (
                 <>
@@ -184,13 +176,11 @@ const ProductDetail = () => {
               )}
             </div>
             
-            {/* Description */}
             <div className="mt-6">
               <h3 className="text-lg font-semibold mb-2">Descrição</h3>
               <p className="text-gray-600">{product.description || 'Sem descrição disponível.'}</p>
             </div>
             
-            {/* Product Dimensions */}
             {(product.width || product.height || product.depth) && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold mb-2 flex items-center">
@@ -220,7 +210,6 @@ const ProductDetail = () => {
               </div>
             )}
             
-            {/* Product Details */}
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
               {product.material && (
                 <div>
@@ -237,7 +226,6 @@ const ProductDetail = () => {
               )}
             </div>
             
-            {/* Care Instructions */}
             {product.care_instructions && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold mb-2">Instruções de Cuidado</h3>
@@ -245,7 +233,6 @@ const ProductDetail = () => {
               </div>
             )}
             
-            {/* Action Buttons */}
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
               <button className="button-primary flex-1 py-3 flex items-center justify-center">
                 <ShoppingBag className="h-5 w-5 mr-2" />
@@ -258,11 +245,10 @@ const ProductDetail = () => {
           </div>
         </div>
         
-        {/* Related Products */}
         <div className="mt-16">
           <h2 className="text-2xl font-montserrat font-bold mb-6">Você também pode gostar</h2>
           <ProductRelatedItems 
-            currentId={product.id} 
+            productId={product.id} 
             isRental={product.is_rental || false} 
           />
         </div>

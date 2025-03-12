@@ -7,11 +7,12 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ProductRelatedItemsProps {
   productId: string;
+  isRental?: boolean;
   tags?: string[];
   limit?: number;
 }
 
-const ProductRelatedItems = ({ productId, tags = [], limit = 8 }: ProductRelatedItemsProps) => {
+const ProductRelatedItems = ({ productId, isRental, tags = [], limit = 8 }: ProductRelatedItemsProps) => {
   const [relatedProducts, setRelatedProducts] = useState<ProductCardProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
