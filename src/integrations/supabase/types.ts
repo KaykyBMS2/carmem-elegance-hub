@@ -123,6 +123,33 @@ export type Database = {
         }
         Relationships: []
       }
+      maternity_photoshoots: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string
+          instagram_handle: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url: string
+          instagram_handle?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string
+          instagram_handle?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string

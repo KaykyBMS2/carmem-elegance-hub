@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,16 +14,17 @@ import About from "./pages/About";
 import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/admin/Login";
-import Dashboard from "./pages/admin/Dashboard";
-import Products from "./pages/admin/Products";
-import Orders from "./pages/admin/Orders";
-import Customers from "./pages/admin/Customers";
-import Categories from "./pages/admin/Categories";
-import ProductForm from "./pages/admin/ProductForm";
-import OrderDetail from "./pages/admin/OrderDetail";
-import CustomerDetail from "./pages/admin/CustomerDetail";
-import AdminSettings from "./pages/admin/AdminSettings";
-import PhotoshootManagement from "./pages/admin/PhotoshootoManagement";
+import AdminLogin from './pages/admin/Login';
+import AdminDashboard from './pages/admin/Dashboard';
+import AdminProducts from './pages/admin/Products';
+import ProductForm from './pages/admin/ProductForm';
+import AdminOrders from './pages/admin/Orders';
+import OrderDetail from './pages/admin/OrderDetail';
+import AdminCustomers from './pages/admin/Customers';
+import CustomerDetail from './pages/admin/CustomerDetail';
+import Categories from './pages/admin/Categories';
+import AdminSettings from './pages/admin/AdminSettings';
+import PhotoshootManagement from './pages/admin/PhotoshootManagement';
 import Auth from "./pages/Auth/Auth";
 import UserProfileLayout from "./pages/Profile/UserProfileLayout";
 import UserProfile from "./pages/Profile/UserProfile";
@@ -214,7 +214,7 @@ const App = () => {
                 </Route>
                 
                 {/* Admin routes */}
-                <Route path="/admin/login" element={<Login />} />
+                <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={
                   <ProtectedRoute>
                     <Navigate to="/admin/dashboard" replace />
@@ -222,12 +222,12 @@ const App = () => {
                 } />
                 <Route path="/admin/dashboard" element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <AdminDashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/products" element={
                   <ProtectedRoute>
-                    <Products />
+                    <AdminProducts />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/products/new" element={
@@ -247,7 +247,7 @@ const App = () => {
                 } />
                 <Route path="/admin/orders" element={
                   <ProtectedRoute>
-                    <Orders />
+                    <AdminOrders />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/orders/:id" element={
@@ -257,7 +257,7 @@ const App = () => {
                 } />
                 <Route path="/admin/customers" element={
                   <ProtectedRoute>
-                    <Customers />
+                    <AdminCustomers />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/customers/:id" element={
