@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Box, RulerSquare, ShoppingBag, Heart, Clock } from 'lucide-react';
+import { ArrowLeft, Box, Ruler, ShoppingBag, Heart, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -32,6 +32,11 @@ interface ProductImage {
   id: string;
   image_url: string;
   is_primary: boolean;
+}
+
+interface RelatedProductProps {
+  currentProductId: string;
+  isRental: boolean;
 }
 
 const ProductDetail = () => {
@@ -189,7 +194,7 @@ const ProductDetail = () => {
             {(product.width || product.height || product.depth) && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold mb-2 flex items-center">
-                  <RulerSquare className="h-5 w-5 mr-2 text-gray-500" />
+                  <Ruler className="h-5 w-5 mr-2 text-gray-500" />
                   Dimensões
                 </h3>
                 <div className="grid grid-cols-3 gap-4 mt-2 text-center">
@@ -256,7 +261,10 @@ const ProductDetail = () => {
         {/* Related Products */}
         <div className="mt-16">
           <h2 className="text-2xl font-montserrat font-bold mb-6">Você também pode gostar</h2>
-          <ProductRelatedItems currentProductId={product.id} isRental={product.is_rental} />
+          <ProductRelatedItems 
+            currentId={product.id} 
+            isRental={product.is_rental || false} 
+          />
         </div>
       </main>
       

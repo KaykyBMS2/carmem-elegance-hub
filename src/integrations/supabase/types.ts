@@ -428,7 +428,9 @@ export type Database = {
         Row: {
           care_instructions: string | null
           created_at: string
+          depth: number | null
           description: string | null
+          height: number | null
           id: string
           is_rental: boolean | null
           material: string | null
@@ -439,11 +441,14 @@ export type Database = {
           sale_price: number | null
           size_info: string | null
           updated_at: string
+          width: number | null
         }
         Insert: {
           care_instructions?: string | null
           created_at?: string
+          depth?: number | null
           description?: string | null
+          height?: number | null
           id?: string
           is_rental?: boolean | null
           material?: string | null
@@ -454,11 +459,14 @@ export type Database = {
           sale_price?: number | null
           size_info?: string | null
           updated_at?: string
+          width?: number | null
         }
         Update: {
           care_instructions?: string | null
           created_at?: string
+          depth?: number | null
           description?: string | null
+          height?: number | null
           id?: string
           is_rental?: boolean | null
           material?: string | null
@@ -469,6 +477,7 @@ export type Database = {
           sale_price?: number | null
           size_info?: string | null
           updated_at?: string
+          width?: number | null
         }
         Relationships: []
       }
