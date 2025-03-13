@@ -23,6 +23,8 @@ type Product = {
   isRental: boolean;
   rentalPrice?: number;
   rentalIncludes?: string[];
+  salePrice?: number;
+  promoPrice?: number;
 };
 
 type Category = {
@@ -52,23 +54,44 @@ const Shop = () => {
           .from("products")
           .select(`
             *,
-            categories:product_categories(category_id)
+            product_categories(
+              categories(id, name)
+            ),
+            product_images(*)
           `)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
 
         // Transform the data to match the Product type
-        const transformedProducts: Product[] = (data || []).map((item) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          price: item.is_rental ? item.rental_price : item.regular_price,
-          imageUrl: item.images?.[0] || "/placeholder.svg",
-          category: item.categories?.[0]?.category_id || "",
-          isRental: item.is_rental,
-          rentalPrice: item.rental_price,
-        }));
+        const transformedProducts: Product[] = (data || []).map((item) => {
+          // Find primary image or first image
+          let imageUrl = '/placeholder.svg';
+          if (item.product_images && item.product_images.length > 0) {
+            const primaryImage = item.product_images.find((img: any) => img.is_primary);
+            imageUrl = primaryImage ? primaryImage.image_url : item.product_images[0].image_url;
+          }
+          
+          // Extract category information
+          let category = "";
+          if (item.product_categories && item.product_categories.length > 0 && 
+              item.product_categories[0].categories) {
+            category = item.product_categories[0].categories.id;
+          }
+
+          return {
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: item.regular_price,
+            imageUrl: imageUrl,
+            category: category,
+            isRental: item.is_rental || false,
+            rentalPrice: item.rental_price,
+            salePrice: item.sale_price,
+            promoPrice: item.promotional_price
+          };
+        });
 
         setProducts(transformedProducts);
       } catch (error) {
@@ -331,7 +354,9 @@ const Shop = () => {
                   key={product.id}
                   id={product.id}
                   name={product.name}
-                  price={product.isRental ? 0 : product.price}
+                  price={product.price}
+                  salePrice={product.salePrice}
+                  promoPrice={product.promoPrice}
                   imageUrl={product.imageUrl}
                   isRental={product.isRental}
                   rentalPrice={product.rentalPrice}

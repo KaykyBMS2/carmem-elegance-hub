@@ -1,62 +1,35 @@
 
-import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { CheckCircle2, ChevronRight, Clock, CreditCard, QrCode, Copy, DollarSign } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Link, useParams, Navigate } from 'react-router-dom';
+import { CheckCircle, Clock, Copy, DollarSign, Info, ShoppingBag } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { toast } from '@/hooks/use-toast';
+import { Order, OrderItem } from '@/types/order';
 import { format } from 'date-fns';
-import { pt } from 'date-fns/locale';
-
-interface OrderItem {
-  id: string;
-  product_id: string;
-  quantity: number;
-  price: number;
-  is_rental: boolean;
-  product: {
-    name: string;
-    id: string;
-  };
-  product_images: {
-    image_url: string;
-  }[];
-}
-
-interface Order {
-  id: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  total_amount: number;
-  status: string;
-  payment_method: string;
-  payment_status: string;
-  coupon_discount: number;
-  installments: number;
-  created_at: string;
-  rental_start_date: string | null;
-  rental_end_date: string | null;
-  rental_pickup_preference: string | null;
-  customer_notes: string | null;
-}
+import { ptBR } from 'date-fns/locale';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { useShop } from '@/contexts/ShopContext';
 
 const OrderConfirmation = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+  const { clearCart } = useShop();
   
   useEffect(() => {
-    const fetchOrderDetails = async () => {
+    const fetchOrder = async () => {
       if (!orderId) return;
       
       try {
         setLoading(true);
         
-        // Fetch order details
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .select('*')
@@ -65,46 +38,56 @@ const OrderConfirmation = () => {
           
         if (orderError) throw orderError;
         
-        setOrder(orderData);
-        
-        // Fetch order items with product details
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select(`
-            *,
-            product:product_id (
-              name,
-              id
-            ),
-            product_images:products (
-              image_url
-            )
-          `)
-          .eq('order_id', orderId);
+        if (orderData) {
+          setOrder(orderData);
           
-        if (itemsError) throw itemsError;
-        
-        // Process the data to match the OrderItem type
-        const processedItems: OrderItem[] = (itemsData || []).map(item => ({
-          ...item,
-          product: item.product || { name: 'Produto não encontrado', id: '' },
-          product_images: Array.isArray(item.product_images) 
-            ? item.product_images.map((img: any) => ({ image_url: img.image_url }))
-            : [{ image_url: '/placeholder.svg' }]
-        }));
-        
-        setOrderItems(processedItems);
+          // Fetch order items
+          const { data: itemsData, error: itemsError } = await supabase
+            .from('order_items')
+            .select(`
+              *,
+              product:products(id, name),
+              product_images:product_images(image_url)
+            `)
+            .eq('order_id', orderId);
+            
+          if (itemsError) throw itemsError;
+          
+          if (itemsData) {
+            const formattedItems: OrderItem[] = itemsData.map(item => {
+              // Extract the image URL from the first product image
+              let imageUrl = '/placeholder.svg';
+              if (item.product_images && item.product_images.length > 0) {
+                imageUrl = item.product_images[0].image_url;
+              }
+              
+              return {
+                ...item,
+                product_images: [{image_url: imageUrl}]
+              };
+            });
+            
+            setOrderItems(formattedItems);
+          }
+          
+          // Clear the cart after loading the order
+          clearCart();
+        }
       } catch (error) {
-        console.error('Error fetching order details:', error);
+        console.error('Error fetching order:', error);
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar os detalhes do pedido.',
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }
     };
     
-    fetchOrderDetails();
-  }, [orderId]);
+    fetchOrder();
+  }, [orderId, toast, clearCart]);
   
-  // Format currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -112,272 +95,237 @@ const OrderConfirmation = () => {
     }).format(value);
   };
   
-  // Format payment method display
-  const formatPaymentMethod = (method: string) => {
-    const methods: Record<string, { label: string; icon: React.ReactNode }> = {
-      'credit_card': { 
-        label: 'Cartão de Crédito', 
-        icon: <CreditCard className="h-4 w-4" /> 
-      },
-      'debit_card': { 
-        label: 'Cartão de Débito', 
-        icon: <CreditCard className="h-4 w-4" /> 
-      },
-      'pix': { 
-        label: 'PIX', 
-        icon: <QrCode className="h-4 w-4" /> 
-      },
-      'boleto': { 
-        label: 'Boleto Bancário', 
-        icon: <DollarSign className="h-4 w-4" /> 
-      },
-    };
-    
-    return methods[method] || { label: method, icon: null };
-  };
-  
-  // Format pickup preference display
-  const formatPickupPreference = (preference: string | null) => {
-    if (!preference) return 'Não especificado';
-    
-    const preferences: Record<string, string> = {
-      'store': 'Retirar na loja',
-      'delivery': 'Entrega no endereço',
-      'appointment': 'Agendar visita para prova',
-    };
-    
-    return preferences[preference] || preference;
-  };
-  
-  // Copy order ID to clipboard
   const copyOrderId = () => {
-    if (!order) return;
-    
-    navigator.clipboard.writeText(order.id);
-    toast({
-      title: "Copiado!",
-      description: "Número do pedido copiado para a área de transferência",
-    });
+    if (orderId) {
+      navigator.clipboard.writeText(orderId);
+      setCopied(true);
+      toast({
+        title: 'Copiado',
+        description: 'Número do pedido copiado para a área de transferência.',
+      });
+      
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
   
-  if (loading) {
-    return (
-      <div className="container mx-auto max-w-3xl py-16 px-4 flex justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-purple border-t-transparent"></div>
-      </div>
-    );
+  // Redirect if there's no order ID
+  if (!orderId) {
+    return <Navigate to="/" />;
   }
-  
-  if (!order) {
-    return (
-      <div className="container mx-auto max-w-3xl py-16 px-4">
-        <Card className="text-center py-8">
-          <CardContent>
-            <h1 className="text-2xl font-bold font-montserrat mb-4">Pedido não encontrado</h1>
-            <p className="text-muted-foreground mb-6">
-              Não foi possível encontrar informações para o pedido solicitado.
-            </p>
-            <Button asChild className="bg-brand-purple hover:bg-brand-purple/90">
-              <Link to="/shop">Voltar para a loja</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-  
-  const { payment_method } = order;
-  const paymentInfo = formatPaymentMethod(payment_method);
   
   return (
-    <div className="container mx-auto max-w-3xl py-16 px-4">
-      <Card>
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle2 className="h-6 w-6 text-green-600" />
-          </div>
-          <CardTitle className="text-2xl font-bold font-montserrat">
-            Pedido Confirmado!
-          </CardTitle>
-        </CardHeader>
-        
-        <CardContent className="space-y-6">
-          <div className="rounded-lg bg-muted p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Número do pedido</p>
-                <div className="flex items-center">
-                  <p className="font-montserrat font-medium">
-                    {order.id.split('-')[0]}...
-                  </p>
-                  <button 
-                    onClick={copyOrderId} 
-                    className="ml-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      
+      <main className="flex-1 py-10">
+        <div className="container mx-auto px-4">
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-purple border-t-transparent"></div>
+            </div>
+          ) : order ? (
+            <div className="max-w-3xl mx-auto">
+              <div className="text-center mb-10">
+                <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-4">
+                  <CheckCircle className="h-10 w-10 text-green-600" />
                 </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Data do pedido</p>
-                <p className="font-medium">
-                  {format(new Date(order.created_at), 'dd/MM/yyyy', { locale: pt })}
+                <h1 className="text-3xl font-bold mb-2">Pedido Confirmado!</h1>
+                <p className="text-gray-600">
+                  Seu pedido foi recebido e está sendo processado.
                 </p>
               </div>
-            </div>
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-medium font-montserrat mb-3">Seus dados</h3>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              <div>
-                <dt className="text-muted-foreground">Nome</dt>
-                <dd>{order.customer_name}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Email</dt>
-                <dd>{order.customer_email}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Telefone</dt>
-                <dd>{order.customer_phone || 'Não informado'}</dd>
-              </div>
-            </dl>
-          </div>
-          
-          {(order.rental_start_date || order.rental_end_date) && (
-            <div>
-              <h3 className="text-lg font-medium font-montserrat mb-3">Detalhes do Aluguel</h3>
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                {order.rental_start_date && (
-                  <div>
-                    <dt className="text-muted-foreground">Data de Retirada</dt>
-                    <dd>{format(new Date(order.rental_start_date), 'dd/MM/yyyy', { locale: pt })}</dd>
-                  </div>
-                )}
-                {order.rental_end_date && (
-                  <div>
-                    <dt className="text-muted-foreground">Data de Devolução</dt>
-                    <dd>{format(new Date(order.rental_end_date), 'dd/MM/yyyy', { locale: pt })}</dd>
-                  </div>
-                )}
-                <div>
-                  <dt className="text-muted-foreground">Preferência de Retirada</dt>
-                  <dd>{formatPickupPreference(order.rental_pickup_preference)}</dd>
-                </div>
-              </dl>
-              {order.customer_notes && (
-                <div className="mt-3">
-                  <p className="text-muted-foreground text-sm">Observações:</p>
-                  <p className="text-sm">{order.customer_notes}</p>
-                </div>
-              )}
-            </div>
-          )}
-          
-          <div>
-            <h3 className="text-lg font-medium font-montserrat mb-3">Itens do Pedido</h3>
-            <div className="space-y-3">
-              {orderItems.map((item) => (
-                <div key={item.id} className="flex gap-3">
-                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
-                    <img
-                      src={item.product_images?.[0]?.image_url || '/placeholder.svg'}
-                      alt={item.product?.name}
-                      className="h-full w-full object-cover object-center"
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col">
-                    <div className="flex justify-between text-sm font-medium text-gray-900">
-                      <h3 className="font-montserrat">
-                        {item.product?.name}
-                        {item.is_rental && <span className="text-brand-purple"> (Aluguel)</span>}
-                      </h3>
+              
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle>Detalhes do Pedido</CardTitle>
+                      <CardDescription>Pedido realizado em {
+                        format(new Date(order.created_at), "d 'de' MMMM 'de' yyyy", { locale: ptBR })
+                      }</CardDescription>
                     </div>
-                    <div className="mt-auto flex items-end justify-between">
-                      <p className="text-xs text-gray-500">Qtd: {item.quantity}</p>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatCurrency(item.price * item.quantity)}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={copyOrderId}
+                      className="flex items-center gap-1"
+                    >
+                      <Copy className="h-4 w-4" />
+                      {copied ? 'Copiado!' : 'Copiar Nº'}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Número do Pedido</h3>
+                        <p className="font-medium">{orderId}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Status</h3>
+                        <div className="flex items-center">
+                          <span className="h-2 w-2 bg-amber-400 rounded-full mr-2"></span>
+                          <span className="font-medium capitalize">{order.status}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Forma de Pagamento</h3>
+                        <p className="font-medium">{order.payment_method || 'PIX'}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Status do Pagamento</h3>
+                        <div className="flex items-center">
+                          <span className={`h-2 w-2 rounded-full mr-2 ${
+                            order.payment_status === 'paid' ? 'bg-green-500' : 'bg-amber-400'
+                          }`}></span>
+                          <span className="font-medium capitalize">{order.payment_status || 'pendente'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div>
+                      <h3 className="font-medium mb-3">Itens do Pedido</h3>
+                      <div className="space-y-3">
+                        {orderItems.map((item) => (
+                          <div key={item.id} className="flex gap-4">
+                            <div className="h-16 w-16 flex-shrink-0 rounded-md overflow-hidden bg-gray-100">
+                              {item.product_images && item.product_images[0] ? (
+                                <img 
+                                  src={item.product_images[0].image_url} 
+                                  alt={item.product?.name} 
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center text-gray-400">
+                                  <ShoppingBag className="h-6 w-6" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium">{item.product?.name}</p>
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm">
+                                <span>{item.quantity} {item.quantity > 1 ? 'unidades' : 'unidade'}</span>
+                                {item.is_rental && (
+                                  <span className="text-brand-purple">Aluguel</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium">{formatCurrency(item.price * item.quantity)}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {item.quantity > 1 && `${formatCurrency(item.price)} cada`}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div>
+                      <h3 className="font-medium mb-3">Resumo</h3>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span>{formatCurrency(order.total_amount + (order.coupon_discount || 0))}</span>
+                        </div>
+                        
+                        {!!order.coupon_discount && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Desconto</span>
+                            <span className="text-green-600">-{formatCurrency(order.coupon_discount)}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between font-medium text-lg pt-2">
+                          <span>Total</span>
+                          <span>{formatCurrency(order.total_amount)}</span>
+                        </div>
+                        
+                        {order.installments && order.installments > 1 && (
+                          <div className="text-sm text-right text-muted-foreground">
+                            ou {order.installments}x de {formatCurrency(order.total_amount / order.installments)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {order.is_rental && (
+                      <>
+                        <Separator />
+                        
+                        <div>
+                          <h3 className="font-medium mb-3">Detalhes do Aluguel</h3>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {order.rental_start_date && (
+                              <div>
+                                <p className="text-sm text-muted-foreground">Data de Retirada</p>
+                                <p className="font-medium">{format(new Date(order.rental_start_date), "dd/MM/yyyy")}</p>
+                              </div>
+                            )}
+                            
+                            {order.rental_end_date && (
+                              <div>
+                                <p className="text-sm text-muted-foreground">Data de Devolução</p>
+                                <p className="font-medium">{format(new Date(order.rental_end_date), "dd/MM/yyyy")}</p>
+                              </div>
+                            )}
+                            
+                            {order.rental_pickup_preference && (
+                              <div className="col-span-full">
+                                <p className="text-sm text-muted-foreground">Preferência de Retirada</p>
+                                <p className="font-medium">{order.rental_pickup_preference}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    
+                    <div className="bg-blue-50 p-4 rounded-lg flex gap-3">
+                      <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-blue-800 font-medium">Próximos passos</p>
+                        <p className="text-blue-700 text-sm mt-1">
+                          Você receberá um e-mail com a confirmação do pedido e instruções para pagamento.
+                          Em caso de dúvidas, entre em contato conosco pelo WhatsApp.
                         </p>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                </CardContent>
+                <CardFooter className="justify-between flex-wrap gap-4">
+                  <Button asChild variant="outline">
+                    <Link to="/profile/orders">Ver Meus Pedidos</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link to="/shop">Continuar Comprando</Link>
+                  </Button>
+                </CardFooter>
+              </Card>
             </div>
-          </div>
-          
-          <Separator />
-          
-          <div>
-            <h3 className="text-lg font-medium font-montserrat mb-3">Resumo do Pagamento</h3>
-            
-            <div className="flex items-center mb-4">
-              <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                {paymentInfo.icon}
-              </div>
-              <div>
-                <p className="font-medium">{paymentInfo.label}</p>
-                {order.payment_method === 'credit_card' && order.installments > 1 && (
-                  <p className="text-sm text-muted-foreground">
-                    {order.installments}x de {formatCurrency(order.total_amount / order.installments)}
-                  </p>
-                )}
-              </div>
+          ) : (
+            <div className="text-center py-16">
+              <ShoppingBag className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Pedido não encontrado</h2>
+              <p className="text-gray-600 mb-6">
+                Não foi possível encontrar detalhes para este pedido.
+              </p>
+              <Button asChild>
+                <Link to="/">Voltar para a página inicial</Link>
+              </Button>
             </div>
-            
-            <div className="rounded-lg border p-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span>{formatCurrency(order.total_amount + order.coupon_discount)}</span>
-                </div>
-                
-                {order.coupon_discount > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Desconto de cupom</span>
-                    <span className="text-green-600">-{formatCurrency(order.coupon_discount)}</span>
-                  </div>
-                )}
-                
-                <Separator />
-                
-                <div className="flex justify-between font-medium">
-                  <span>Total</span>
-                  <span>{formatCurrency(order.total_amount)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="rounded-lg bg-brand-purple/10 p-4">
-            <div className="flex">
-              <Clock className="h-5 w-5 text-brand-purple mr-2" />
-              <div>
-                <h4 className="font-medium font-montserrat">Status do Pedido: {order.status.toUpperCase()}</h4>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Você receberá atualizações sobre o status do seu pedido por email.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-        
-        <CardFooter className="flex flex-col space-y-2 sm:flex-row sm:justify-between sm:space-x-0 sm:space-y-0">
-          <Button asChild variant="outline">
-            <Link to="/shop">
-              Continuar comprando
-            </Link>
-          </Button>
-          <Button asChild className="bg-brand-purple hover:bg-brand-purple/90">
-            <Link to="/profile/orders">
-              <span>Meus Pedidos</span>
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </CardFooter>
-      </Card>
+          )}
+        </div>
+      </main>
+      
+      <Footer />
     </div>
   );
 };

@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { Plus, Trash2, Edit, Check } from 'lucide-react';
@@ -38,6 +37,8 @@ const CouponManagement = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState<any>(null);
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Form setup
   const form = useForm<CouponFormValues>({
@@ -67,18 +68,31 @@ const CouponManagement = () => {
   });
   
   // Fetch coupons
-  const { data: coupons, isLoading, refetch } = useQuery({
-    queryKey: ['admin-coupons'],
-    queryFn: async () => {
+  const fetchCoupons = async () => {
+    setIsLoading(true);
+    try {
       const { data, error } = await supabase
         .from('discount_coupons')
         .select('*')
         .order('created_at', { ascending: false });
         
       if (error) throw error;
-      return data || [];
+      setCoupons(data || []);
+    } catch (error: any) {
+      console.error("Error fetching coupons:", error);
+      toast({
+        title: "Erro ao carregar cupons",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-  });
+  };
+  
+  useEffect(() => {
+    fetchCoupons();
+  }, []);
   
   // Reset form when dialog closes
   useEffect(() => {
@@ -92,7 +106,7 @@ const CouponManagement = () => {
     if (selectedCoupon && isEditDialogOpen) {
       editForm.reset({
         code: selectedCoupon.code,
-        discount_type: selectedCoupon.discount_type,
+        discount_type: selectedCoupon.discount_type as "percentage" | "fixed",
         discount_value: selectedCoupon.discount_value,
         min_purchase_amount: selectedCoupon.min_purchase_amount || undefined,
         max_uses: selectedCoupon.max_uses || undefined,
@@ -123,7 +137,7 @@ const CouponManagement = () => {
       });
       
       setIsAddDialogOpen(false);
-      refetch();
+      fetchCoupons();
     } catch (error: any) {
       toast({
         title: "Erro ao criar cupom",
@@ -161,7 +175,7 @@ const CouponManagement = () => {
       
       setIsEditDialogOpen(false);
       setSelectedCoupon(null);
-      refetch();
+      fetchCoupons();
     } catch (error: any) {
       toast({
         title: "Erro ao atualizar cupom",
@@ -188,7 +202,7 @@ const CouponManagement = () => {
         description: "O cupom foi excluído com sucesso.",
       });
       
-      refetch();
+      fetchCoupons();
     } catch (error: any) {
       toast({
         title: "Erro ao excluir cupom",
@@ -591,15 +605,21 @@ const CouponManagement = () => {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-3 text-center">
-                    <div className="flex justify-center p-4">
-                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
+                  <td colSpan={7} className="py-6 text-center">
+                    <div className="flex justify-center">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
                     </div>
                   </td>
                 </tr>
-              ) : coupons && coupons.length > 0 ? (
+              ) : coupons.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-6 text-center text-muted-foreground">
+                    Nenhum cupom encontrado.
+                  </td>
+                </tr>
+              ) : (
                 coupons.map((coupon) => (
-                  <tr key={coupon.id} className="border-t">
+                  <tr key={coupon.id} className="border-t hover:bg-muted/50">
                     <td className="px-4 py-3 font-medium">
                       {coupon.code}
                     </td>
@@ -617,57 +637,51 @@ const CouponManagement = () => {
                       )}
                     </td>
                     <td className="hidden px-4 py-3 md:table-cell">
-                      {coupon.max_uses ? (
-                        <span>{coupon.current_uses}/{coupon.max_uses}</span>
-                      ) : (
-                        <span className="text-muted-foreground">Ilimitado</span>
-                      )}
+                      {coupon.current_uses || 0}
+                      {coupon.max_uses ? ` / ${coupon.max_uses}` : ''}
                     </td>
                     <td className="hidden px-4 py-3 md:table-cell">
                       {coupon.expires_at ? (
-                        <span>
-                          {format(new Date(coupon.expires_at), 'dd/MM/yyyy', { locale: pt })}
-                        </span>
+                        format(new Date(coupon.expires_at), 'dd/MM/yyyy', { locale: pt })
                       ) : (
                         <span className="text-muted-foreground">Sem validade</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={coupon.is_active ? "default" : "outline"}>
+                      <Badge
+                        variant={coupon.is_active ? "default" : "outline"}
+                        className={coupon.is_active ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-gray-100 text-gray-800"}
+                      >
                         {coupon.is_active ? "Ativo" : "Inativo"}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
                         <Button
-                          variant="outline"
-                          size="icon"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => {
                             setSelectedCoupon(coupon);
                             setIsEditDialogOpen(true);
                           }}
+                          className="h-8 w-8 p-0"
                         >
-                          <Edit className="h-4 w-4" />
                           <span className="sr-only">Editar</span>
+                          <Edit className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="outline"
-                          size="icon"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => deleteCoupon(coupon.id)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
                         >
-                          <Trash2 className="h-4 w-4" />
                           <span className="sr-only">Excluir</span>
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>
                   </tr>
                 ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
-                    Nenhum cupom encontrado
-                  </td>
-                </tr>
               )}
             </tbody>
           </Table>

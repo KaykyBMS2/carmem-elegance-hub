@@ -1,8 +1,25 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
-import { Coupon } from '@/types/coupon';
+
+// Define types
+export type Coupon = {
+  id: string;
+  code: string;
+  discount_type: "percentage" | "fixed";
+  discount_value: number;
+  min_purchase_amount: number | null;
+  max_uses: number | null;
+  current_uses: number;
+  is_active: boolean;
+  starts_at: string | null;
+  expires_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export interface CartItem {
   id: string;

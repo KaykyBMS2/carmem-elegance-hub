@@ -1,196 +1,162 @@
 
-import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { 
-  LayoutDashboard, 
-  ShoppingBag, 
-  ShoppingCart, 
-  Users, 
-  Tag, 
-  Settings, 
-  LogOut, 
-  Menu, 
-  X, 
-  ChevronDown,
-  Image 
+import {
+  Users,
+  Package,
+  Tag,
+  ShoppingCart,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  LayoutDashboard,
+  Camera,
+  Ticket
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
-  title: string;
+  title?: string;
 }
 
-const AdminLayout = ({ children, title }: AdminLayoutProps) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const location = useLocation();
+const AdminLayout = ({ children, title = 'Dashboard' }: AdminLayoutProps) => {
+  const { user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
-
-  const navigation = [
-    { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-    { name: 'Produtos', href: '/admin/products', icon: ShoppingBag },
-    { name: 'Ensaios', href: '/admin/photoshoots', icon: Image },
-    { name: 'Pedidos', href: '/admin/orders', icon: ShoppingCart },
-    { name: 'Clientes', href: '/admin/customers', icon: Users },
-    { name: 'Categorias', href: '/admin/categories', icon: Tag },
-    { name: 'Cupons', href: '/admin/coupons', icon: Tag },
-    { name: 'Configurações', href: '/admin/settings', icon: Settings },
-  ];
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast({
-      title: 'Desconectado',
-      description: 'Você saiu do sistema com sucesso.',
-    });
+    await signOut();
     navigate('/admin/login');
   };
 
+  const navItems = [
+    { name: 'Dashboard', href: '/admin/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+    { name: 'Produtos', href: '/admin/products', icon: <Package className="h-5 w-5" /> },
+    { name: 'Categorias', href: '/admin/categories', icon: <Tag className="h-5 w-5" /> },
+    { name: 'Pedidos', href: '/admin/orders', icon: <ShoppingCart className="h-5 w-5" /> },
+    { name: 'Clientes', href: '/admin/customers', icon: <Users className="h-5 w-5" /> },
+    { name: 'Ensaios Fotográficos', href: '/admin/photoshoots', icon: <Camera className="h-5 w-5" /> },
+    { name: 'Cupons', href: '/admin/coupons', icon: <Ticket className="h-5 w-5" /> },
+    { name: 'Configurações', href: '/admin/settings', icon: <Settings className="h-5 w-5" /> },
+  ];
+
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden" 
-          onClick={() => setSidebarOpen(false)}
-        ></div>
-      )}
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile sidebar */}
+      <div className="lg:hidden">
+        <div className="fixed inset-0 z-40 flex">
+          <div
+            className={`fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity duration-300 ${
+              sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+            onClick={() => setSidebarOpen(false)}
+          ></div>
 
-      {/* Sidebar */}
-      <div 
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 transform bg-white shadow-lg transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <div className="flex h-full flex-col">
-          {/* Sidebar header */}
-          <div className="flex h-16 items-center justify-between border-b px-4">
-            <Link to="/admin/dashboard" className="flex items-center">
-              <span className="text-xl font-bold text-brand-purple">Carmem Bezerra</span>
-            </Link>
-            <button
-              type="button"
-              className="text-gray-500 hover:text-gray-600 lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X size={20} />
-            </button>
+          <div
+            className={`relative flex w-full max-w-xs flex-1 flex-col bg-white pt-5 pb-4 transition duration-300 ease-in-out transform ${
+              sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+          >
+            <div className="absolute top-0 right-0 -mr-12 pt-2">
+              <button
+                className="ml-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="sr-only">Fechar menu</span>
+                <X className="h-6 w-6 text-white" />
+              </button>
+            </div>
+
+            <div className="flex flex-shrink-0 items-center px-4">
+              <h1 className="text-xl font-bold text-brand-purple">Carmem Bezerra Admin</h1>
+            </div>
+            <div className="mt-5 h-0 flex-1 overflow-y-auto">
+              <nav className="space-y-1 px-2">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="group flex items-center rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-brand-purple/10 hover:text-brand-purple"
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    {item.icon}
+                    <span className="ml-3">{item.name}</span>
+                  </Link>
+                ))}
+              </nav>
+            </div>
           </div>
+        </div>
+      </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto px-2 py-4">
-            <ul className="space-y-1">
-              {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
-                const Icon = item.icon;
-                
-                return (
-                  <li key={item.name}>
-                    <Link
-                      to={item.href}
-                      className={cn(
-                        "flex items-center rounded-md px-3 py-2 text-sm font-medium",
-                        isActive
-                          ? "bg-brand-purple/10 text-brand-purple"
-                          : "text-gray-700 hover:bg-gray-100"
-                      )}
-                    >
-                      <Icon size={18} className="mr-3" />
-                      {item.name}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          {/* Sidebar footer */}
-          <div className="border-t px-4 py-4">
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="flex w-full items-center rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-            >
-              <LogOut size={18} className="mr-3" />
-              Sair
-            </button>
+      {/* Desktop sidebar */}
+      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
+        <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white">
+          <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
+            <div className="flex flex-shrink-0 items-center px-4">
+              <h1 className="text-xl font-bold text-brand-purple">Carmem Bezerra</h1>
+            </div>
+            <nav className="mt-5 flex-1 space-y-1 px-2">
+              {navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className="group flex items-center rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-brand-purple/10 hover:text-brand-purple"
+                >
+                  {item.icon}
+                  <span className="ml-3">{item.name}</span>
+                </Link>
+              ))}
+            </nav>
+          </div>
+          <div className="flex flex-shrink-0 border-t border-gray-200 p-4">
+            <div className="flex items-center">
+              <div>
+                <Avatar className="h-9 w-9">
+                  <AvatarFallback className="bg-brand-purple text-white">
+                    {user?.email?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-700">{user?.email}</p>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center text-xs font-medium text-gray-500 hover:text-brand-purple"
+                >
+                  <LogOut className="mr-1 h-3 w-3" />
+                  Sair
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top navbar */}
-        <header className="border-b bg-white shadow-sm">
-          <div className="flex h-16 items-center justify-between px-4">
-            {/* Left: Hamburger menu and title */}
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                className="text-gray-500 hover:text-gray-600 lg:hidden"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <Menu size={24} />
-              </button>
-              <h1 className="text-xl font-semibold text-gray-800">{title}</h1>
-            </div>
+      <div className="flex flex-1 flex-col lg:pl-64">
+        <div className="sticky top-0 z-10 bg-white pl-1 pt-1 sm:pl-3 sm:pt-3 lg:hidden">
+          <button
+            type="button"
+            className="-ml-0.5 -mt-0.5 inline-flex h-12 w-12 items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <span className="sr-only">Abrir menu</span>
+            <Menu className="h-6 w-6" />
+          </button>
+        </div>
 
-            {/* Right: User menu */}
-            <div className="relative">
-              <button
-                type="button"
-                className="flex items-center rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-brand-purple focus:ring-offset-2"
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-              >
-                <span className="sr-only">Abrir menu do usuário</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-brand-purple text-white flex items-center justify-center">
-                    {user?.email?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                  <span className="hidden text-sm font-medium text-gray-700 md:block">
-                    {user?.email}
-                  </span>
-                  <ChevronDown size={16} className="text-gray-500" />
-                </div>
-              </button>
-
-              {/* User dropdown menu */}
-              {userMenuOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-                  onClick={() => setUserMenuOpen(false)}
-                >
-                  <div className="px-4 py-2 text-xs text-gray-500">
-                    Conta
-                  </div>
-                  <div className="border-t"></div>
-                  <Link
-                    to="/admin/settings"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Configurações
-                  </Link>
-                  <button
-                    onClick={handleSignOut}
-                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Sair
-                  </button>
-                </div>
-              )}
+        <main className="flex-1">
+          <div className="py-6">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
             </div>
+            <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</div>
           </div>
-        </header>
-
-        {/* Main content area */}
-        <main className="flex-1 overflow-auto bg-gray-50 p-4">
-          <div className="container mx-auto">{children}</div>
         </main>
       </div>
     </div>
