@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -76,10 +75,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [coupon, setCoupon] = useState<Coupon | null>(null);
   const { isAuthenticated, user } = useAuth();
   
-  // Interest rates for installment payments (monthly)
   const installmentFee = 0.0199; // 1.99% per month
   
-  // Calculate cart total and count
   const cartTotal = cart.reduce((total, item) => {
     const price = item.promoPrice || item.salePrice || item.price;
     return total + price * item.quantity;
@@ -87,7 +84,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const cartCount = cart.reduce((count, item) => count + item.quantity, 0);
   
-  // Calculate discount based on applied coupon
   const calculateDiscount = (amount: number): number => {
     if (!coupon) return 0;
     
@@ -102,16 +98,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  // Calculate installment value with interest
   const calculateInstallmentValue = (amount: number, installments: number): number => {
     if (installments <= 1) return amount;
     
-    // Apply compound interest formula
     return amount * (installmentFee * Math.pow(1 + installmentFee, installments)) / 
            (Math.pow(1 + installmentFee, installments) - 1);
   };
   
-  // Apply coupon code
   const applyCoupon = async (code: string): Promise<{ success: boolean; message: string }> => {
     try {
       const { data, error } = await supabase
@@ -128,7 +121,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
       
-      // Check if coupon has expired
       if (data.expires_at && new Date(data.expires_at) < new Date()) {
         return { 
           success: false, 
@@ -136,7 +128,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
       
-      // Check if coupon has reached max uses
       if (data.max_uses && data.current_uses >= data.max_uses) {
         return { 
           success: false, 
@@ -144,7 +135,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
       
-      // Check minimum purchase amount
       if (data.min_purchase_amount && cartTotal < data.min_purchase_amount) {
         return { 
           success: false, 
@@ -155,10 +145,25 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
       
-      setCoupon(data);
+      const typedCoupon: Coupon = {
+        id: data.id,
+        code: data.code,
+        discount_type: data.discount_type === 'percentage' ? 'percentage' : 'fixed',
+        discount_value: data.discount_value,
+        min_purchase_amount: data.min_purchase_amount,
+        max_uses: data.max_uses,
+        current_uses: data.current_uses,
+        is_active: data.is_active,
+        starts_at: data.starts_at,
+        expires_at: data.expires_at,
+        created_by: data.created_by,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
       
-      // Save coupon to localStorage
-      localStorage.setItem('carmem_bezerra_coupon', JSON.stringify(data));
+      setCoupon(typedCoupon);
+      
+      localStorage.setItem('carmem_bezerra_coupon', JSON.stringify(typedCoupon));
       
       return { 
         success: true, 
@@ -173,13 +178,11 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  // Remove applied coupon
   const removeCoupon = () => {
     setCoupon(null);
     localStorage.removeItem('carmem_bezerra_coupon');
   };
 
-  // Load cart and favorites from localStorage on mount
   useEffect(() => {
     const loadCartFromStorage = () => {
       const savedCart = localStorage.getItem('carmem_bezerra_cart');
@@ -196,10 +199,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadCartFromStorage();
   }, []);
 
-  // Load favorites from localStorage
   useEffect(() => {
     const loadFavorites = async () => {
-      // Always use localStorage for favorites
       const savedFavorites = localStorage.getItem('carmem_bezerra_favorites');
       if (savedFavorites) {
         try {
@@ -214,7 +215,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadFavorites();
   }, [isAuthenticated, user]);
   
-  // Load any saved coupon from localStorage
   useEffect(() => {
     const savedCoupon = localStorage.getItem('carmem_bezerra_coupon');
     if (savedCoupon) {
@@ -227,30 +227,25 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Save cart to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('carmem_bezerra_cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Save favorites to localStorage when they change
   useEffect(() => {
     localStorage.setItem('carmem_bezerra_favorites', JSON.stringify(favorites));
   }, [favorites, isAuthenticated]);
 
-  // Cart operations
   const addToCart = (product: Omit<CartItem, 'quantity'>, quantity = 1) => {
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === product.id);
       
       if (existingItem) {
-        // Update quantity of existing item
         return prevCart.map(item => 
           item.id === product.id 
             ? { ...item, quantity: item.quantity + quantity } 
             : item
         );
       } else {
-        // Add new item
         return [...prevCart, { ...product, quantity }];
       }
     });
@@ -288,9 +283,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     removeCoupon();
   };
 
-  // Favorites operations
   const addToFavorites = (product: FavoriteItem) => {
-    // Update local state only
     setFavorites(prev => {
       if (prev.some(item => item.id === product.id)) {
         return prev;
@@ -305,7 +298,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const removeFromFavorites = (productId: string) => {
-    // Update local state
     setFavorites(prev => prev.filter(item => item.id !== productId));
     
     toast({

@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle2, ChevronRight, Clock, CreditCard, QrCode, Copy, Money } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Clock, CreditCard, QrCode, Copy, DollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -84,7 +84,16 @@ const OrderConfirmation = () => {
           
         if (itemsError) throw itemsError;
         
-        setOrderItems(itemsData || []);
+        // Process the data to match the OrderItem type
+        const processedItems: OrderItem[] = (itemsData || []).map(item => ({
+          ...item,
+          product: item.product || { name: 'Produto não encontrado', id: '' },
+          product_images: item.product_images?.[0]?.image_url 
+            ? [{ image_url: item.product_images[0].image_url }] 
+            : [{ image_url: '/placeholder.svg' }]
+        }));
+        
+        setOrderItems(processedItems);
       } catch (error) {
         console.error('Error fetching order details:', error);
       } finally {
@@ -120,7 +129,7 @@ const OrderConfirmation = () => {
       },
       'boleto': { 
         label: 'Boleto Bancário', 
-        icon: <Money className="h-4 w-4" /> 
+        icon: <DollarSign className="h-4 w-4" /> 
       },
     };
     

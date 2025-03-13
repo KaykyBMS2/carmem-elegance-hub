@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Trash2, CreditCard, QrCode, Money, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Trash2, CreditCard, QrCode, DollarSign, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useShop } from '@/contexts/ShopContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,7 +21,6 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Coupon } from '@/types/coupon';
 
-// Schema for the checkout form validation
 const checkoutFormSchema = z.object({
   name: z.string().min(3, 'Nome completo é obrigatório'),
   email: z.string().email('Email inválido'),
@@ -57,10 +55,8 @@ const Checkout = () => {
   const [pixDiscount, setPixDiscount] = useState(5); // 5% discount for PIX
   const [isRental, setIsRental] = useState(false);
   
-  // Get coupon validation
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   
-  // Initialize form with default values
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
     defaultValues: {
@@ -80,7 +76,6 @@ const Checkout = () => {
   
   const paymentMethod = form.watch('paymentMethod');
   
-  // Fetch user profile data if user is logged in
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user) return;
@@ -110,14 +105,12 @@ const Checkout = () => {
     fetchUserProfile();
   }, [user, form]);
   
-  // Check if cart has rental items
   useEffect(() => {
     const hasRentalItems = cart.some(item => item.isRental);
     setIsRental(hasRentalItems);
     form.setValue('isRental', hasRentalItems);
   }, [cart, form]);
   
-  // Apply coupon code
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
       toast({
@@ -151,7 +144,6 @@ const Checkout = () => {
     }
   };
   
-  // Remove applied coupon
   const handleRemoveCoupon = () => {
     removeCoupon();
     toast({
@@ -160,23 +152,17 @@ const Checkout = () => {
     });
   };
   
-  // Calculate subtotal
   const subtotal = cartTotal;
   
-  // Calculate discount amount
   const couponDiscount = calculateDiscount(subtotal);
   
-  // Calculate PIX discount if payment method is PIX
   const pixDiscountAmount = paymentMethod === 'pix' ? (subtotal - couponDiscount) * (pixDiscount / 100) : 0;
   
-  // Calculate total after discounts
   const total = subtotal - couponDiscount - pixDiscountAmount;
   
-  // Calculate installment value with interest (for credit cards)
   const installmentValue = paymentMethod === 'credit_card' ? 
     calculateInstallmentValue(total, selectedInstallments) : total;
   
-  // Format currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -184,7 +170,29 @@ const Checkout = () => {
     }).format(value);
   };
   
-  // Handle form submission
+  const formatPaymentMethod = (method: string) => {
+    const methods: Record<string, { label: string; icon: React.ReactNode }> = {
+      'credit_card': { 
+        label: 'Cartão de Crédito', 
+        icon: <CreditCard className="h-4 w-4" /> 
+      },
+      'debit_card': { 
+        label: 'Cartão de Débito', 
+        icon: <CreditCard className="h-4 w-4" /> 
+      },
+      'pix': { 
+        label: 'PIX', 
+        icon: <QrCode className="h-4 w-4" /> 
+      },
+      'boleto': { 
+        label: 'Boleto Bancário', 
+        icon: <DollarSign className="h-4 w-4" /> 
+      },
+    };
+    
+    return methods[method] || { label: method, icon: null };
+  };
+  
   const onSubmit = async (values: CheckoutFormValues) => {
     if (cart.length === 0) {
       toast({
@@ -198,7 +206,6 @@ const Checkout = () => {
     setLoading(true);
     
     try {
-      // Create order in database
       const { data: order, error } = await supabase
         .from('orders')
         .insert({
@@ -222,7 +229,6 @@ const Checkout = () => {
         
       if (error) throw error;
       
-      // Create order items
       const orderItems = cart.map(item => ({
         order_id: order.id,
         product_id: item.id,
@@ -239,7 +245,6 @@ const Checkout = () => {
         
       if (itemsError) throw itemsError;
       
-      // Update coupon usage count if applied
       if (coupon) {
         const { error: couponError } = await supabase
           .from('discount_coupons')
@@ -249,7 +254,6 @@ const Checkout = () => {
         if (couponError) console.error('Error updating coupon usage:', couponError);
       }
       
-      // Create customer if not exists
       const { data: existingCustomer } = await supabase
         .from('customers')
         .select('id')
@@ -268,10 +272,8 @@ const Checkout = () => {
         });
       }
       
-      // Clear cart and coupon
       clearCart();
       
-      // Redirect to order confirmation page
       navigate(`/order-confirmation/${order.id}`);
     } catch (error: any) {
       console.error('Error creating order:', error);
@@ -285,7 +287,6 @@ const Checkout = () => {
     }
   };
   
-  // If cart is empty, redirect to shop
   if (cart.length === 0) {
     return (
       <div className="container mx-auto max-w-4xl py-12 px-4">
@@ -546,7 +547,7 @@ const Checkout = () => {
                               <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="boleto" id="boleto" />
                                 <Label htmlFor="boleto" className="flex items-center">
-                                  <Money className="mr-2 h-4 w-4" />
+                                  <DollarSign className="mr-2 h-4 w-4" />
                                   Boleto Bancário
                                 </Label>
                               </div>
@@ -818,3 +819,4 @@ const Checkout = () => {
 };
 
 export default Checkout;
+

@@ -1,6 +1,7 @@
-import { useState, useContext } from 'react';
+
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { AuthContext } from '@/App';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   LayoutDashboard, 
@@ -28,7 +29,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAdmin } = useContext(AuthContext);
+  const { user, isAdmin } = useAuth();
 
   const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -37,6 +38,7 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
     { name: 'Pedidos', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Clientes', href: '/admin/customers', icon: Users },
     { name: 'Categorias', href: '/admin/categories', icon: Tag },
+    { name: 'Cupons', href: '/admin/coupons', icon: Tag },
     { name: 'Configurações', href: '/admin/settings', icon: Settings },
   ];
 

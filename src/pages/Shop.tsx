@@ -1,311 +1,325 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { toast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
+import { useQuery } from "@tanstack/react-query"
+import { supabase } from "@/integrations/supabase/client"
 import { useShop } from '@/contexts/ShopContext';
-import ProductCard from '@/components/ProductCard';
-import { supabase } from '@/integrations/supabase/client';
-import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import { cn } from '@/lib/utils';
-import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { FavoriteItem } from '@/contexts/ShopContext';
+import { Heart, HeartOff } from 'lucide-react';
 
 interface Product {
   id: string;
   name: string;
-  description: string | null;
-  regular_price: number;
-  sale_price: number | null;
-  promotional_price: number | null;
-  is_rental: boolean | null;
-  rental_price: number | null;
-  product_images: { image_url: string; is_primary: boolean | null }[];
-  categories: { name: string }[];
+  description?: string;
+  price: number;
+  sale_price?: number | null;
+  promo_price?: number | null;
+  inventory: number;
+  images: { image_url: string }[];
+  categories?: { id: string; name: string }[];
+  sale_start_date?: string | null;
+  sale_end_date?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const Shop = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<number[]>([0, 1000]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [productsPerPage] = useState(14); // Changed to 14 products per page as requested
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast()
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [priceRange, setPriceRange] = useState([0, 1000]);
+  const [availabilityFilter, setAvailabilityFilter] = useState('all');
+  const [saleStatusFilter, setSaleStatusFilter] = useState('all');
+  const { addToFavorites, removeFromFavorites, isInFavorites } = useShop();
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        let query = supabase
-          .from('products')
-          .select(`
+  const { data: products, isLoading, isError } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          categories (
             id,
-            name,
-            description,
-            regular_price,
-            sale_price,
-            promotional_price,
-            is_rental,
-            rental_price,
-            product_images (
-              image_url,
-              is_primary
-            ),
-            categories (
-              name
-            )
-          `);
+            name
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-        if (searchQuery) {
-          query = query.ilike('name', `%${searchQuery}%`);
-        }
-
-        if (categoryFilter.length > 0) {
-          query = query.in('category_id', categoryFilter);
-        }
-
-        query = query.gte('regular_price', priceRange[0]).lte('regular_price', priceRange[1]);
-
-        query = query.order('regular_price', { ascending: sortOrder === 'asc' });
-
-        const { data, error } = await query;
-
-        if (error) {
-          console.error('Error fetching products:', error);
-        } else {
-          setProducts(data as Product[]);
-        }
-      } catch (error) {
+      if (error) {
         console.error('Error fetching products:', error);
+        throw error;
       }
-    };
+      return data as Product[];
+    },
+  });
 
-    fetchProducts();
-  }, [searchQuery, categoryFilter, priceRange, sortOrder]);
+  const { data: categories, isLoading: isLoadingCategories, isError: isErrorCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true });
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const { data, error } = await supabase.from('categories').select('id, name');
-        if (error) {
-          console.error('Error fetching categories:', error);
-        } else {
-          setCategories(data || []);
-        }
-      } catch (error) {
+      if (error) {
         console.error('Error fetching categories:', error);
+        throw error;
       }
+      return data;
+    },
+  });
+
+  const handleAddToFavorites = (product: Product) => {
+    const favoriteItem: FavoriteItem = {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      salePrice: product.sale_price || null,
+      promoPrice: product.promo_price || null,
+      imageUrl: product.images[0].image_url,
+      isRental: false,
+      rentalPrice: null,
     };
-
-    fetchCategories();
-  }, []);
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1);
+    addToFavorites(favoriteItem);
   };
 
-  const handleCategoryChange = (categoryId: string, checked: boolean) => {
-    if (checked) {
-      setCategoryFilter((prev) => [...prev, categoryId]);
-    } else {
-      setCategoryFilter((prev) => prev.filter((id) => id !== categoryId));
-    }
-    setCurrentPage(1);
+  const handleRemoveFromFavorites = (productId: string) => {
+    removeFromFavorites(productId);
   };
 
-  const handlePriceRangeChange = (value: number[]) => {
-    setPriceRange(value);
-    setCurrentPage(1);
-  };
-
-  const handleSortOrderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortOrder(e.target.value as 'asc' | 'desc');
-    setCurrentPage(1);
-  };
-
-  const clearFilters = () => {
-    setSearchQuery('');
-    setCategoryFilter([]);
-    setPriceRange([0, 1000]);
-    setSortOrder('asc');
-    setCurrentPage(1);
-  };
-
-  // Pagination
-  const indexOfLastProduct = currentPage * productsPerPage;
-  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-  const currentProducts = products.slice(indexOfFirstProduct, indexOfLastProduct);
-
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
-
-  const pageNumbers = [];
-  for (let i = 1; i <= Math.ceil(products.length / productsPerPage); i++) {
-    pageNumbers.push(i);
-  }
-
+  // Format currency
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
     }).format(value);
   };
 
+  // Fix the deep instantiation error by simplifying the filter function
+  // Replace the complex filtering logic with a simpler approach
+  const filteredProducts = useMemo(() => {
+    return products?.filter(product => {
+      // Filter by search term
+      const matchesSearch = searchTerm === '' ||
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Filter by category
+      const matchesCategory = selectedCategory === 'all' ||
+        (product.categories && product.categories.some(cat => cat.id === selectedCategory));
+
+      // Filter by price range
+      const matchesPriceRange = (
+        (product.price >= priceRange[0]) &&
+        (product.price <= priceRange[1])
+      );
+
+      // Filter by availability
+      const matchesAvailability = availabilityFilter === 'all' ||
+        (availabilityFilter === 'in-stock' && product.inventory > 0) ||
+        (availabilityFilter === 'out-of-stock' && product.inventory === 0);
+
+      // Filter by sale status
+      const matchesSaleStatus = saleStatusFilter === 'all' ||
+        (saleStatusFilter === 'on-sale' && product.sale_price !== null) ||
+        (saleStatusFilter === 'regular' && product.sale_price === null);
+
+      return matchesSearch && matchesCategory && matchesPriceRange &&
+        matchesAvailability && matchesSaleStatus;
+    });
+  }, [products, searchTerm, selectedCategory, priceRange, availabilityFilter, saleStatusFilter]);
+
+  if (isLoading || isLoadingCategories) {
+    return <div className="flex justify-center items-center h-screen">Carregando...</div>;
+  }
+
+  if (isError || isErrorCategories) {
+    return <div className="flex justify-center items-center h-screen">Erro ao carregar os produtos.</div>;
+  }
+
   return (
-    <div className="container mx-auto py-12">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold font-montserrat">Nossa Loja</h1>
+    <div className="container mx-auto py-8">
+      <h1 className="text-2xl font-bold mb-4">Nossos Produtos</h1>
 
-        <div className="flex items-center space-x-4">
-          {/* Search Bar */}
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Pesquisar produtos..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="pl-10 pr-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:border-brand-purple"
-            />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Filters Section */}
+        <div className="md:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Filtros</CardTitle>
+              <CardDescription>Filtrar produtos por categoria, preço e mais.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Search Filter */}
+              <div className="space-y-2">
+                <Label htmlFor="search">Pesquisar</Label>
+                <Input
+                  type="text"
+                  id="search"
+                  placeholder="Pesquisar produtos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
 
-          {/* Filter Button */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" onClick={() => setIsFilterOpen(true)}>
-                <SlidersHorizontal className="mr-2 h-4 w-4" />
-                Filtros
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-sm">
-              <SheetHeader>
-                <SheetTitle>Filtros</SheetTitle>
-              </SheetHeader>
-              <div className="py-4">
-                {/* Categories Filter */}
-                <div className="mb-4">
-                  <h3 className="text-lg font-medium mb-2">Categorias</h3>
-                  <div className="space-y-2">
-                    {categories.map((category) => (
-                      <div key={category.id} className="flex items-center">
-                        <Checkbox
-                          id={`category-${category.id}`}
-                          checked={categoryFilter.includes(category.id)}
-                          onCheckedChange={(checked) => handleCategoryChange(category.id, !!checked)}
-                        />
-                        <Label htmlFor={`category-${category.id}`} className="ml-2">
-                          {category.name}
-                        </Label>
+              <Separator />
+
+              {/* Category Filter */}
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <ScrollArea className="h-[200px] rounded-md border p-2">
+                  <RadioGroup defaultValue={selectedCategory} onValueChange={setSelectedCategory}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="all" id="category-all" />
+                      <Label htmlFor="category-all">Todas</Label>
+                    </div>
+                    {categories?.map((category) => (
+                      <div className="flex items-center space-x-2" key={category.id}>
+                        <RadioGroupItem value={category.id} id={`category-${category.id}`} />
+                        <Label htmlFor={`category-${category.id}`}>{category.name}</Label>
                       </div>
                     ))}
-                  </div>
-                </div>
-
-                {/* Price Range Filter */}
-                <div className="mb-4">
-                  <h3 className="text-lg font-medium mb-2">Faixa de Preço</h3>
-                  <div className="flex items-center justify-between">
-                    <span>{formatCurrency(priceRange[0])}</span>
-                    <span>{formatCurrency(priceRange[1])}</span>
-                  </div>
-                  <Slider
-                    defaultValue={priceRange}
-                    min={0}
-                    max={1000}
-                    step={10}
-                    onValueChange={handlePriceRangeChange}
-                  />
-                </div>
-
-                {/* Sort Order */}
-                <div className="mb-4">
-                  <h3 className="text-lg font-medium mb-2">Ordenar por Preço</h3>
-                  <select
-                    value={sortOrder}
-                    onChange={handleSortOrderChange}
-                    className="w-full rounded-md border border-gray-300 focus:outline-none focus:border-brand-purple"
-                  >
-                    <option value="asc">Menor Preço</option>
-                    <option value="desc">Maior Preço</option>
-                  </select>
-                </div>
+                  </RadioGroup>
+                </ScrollArea>
               </div>
-              <SheetFooter>
-                <div className="w-full flex justify-between">
-                  <Button variant="ghost" onClick={clearFilters}>
-                    Limpar Filtros
-                  </Button>
-                  <SheetClose asChild>
-                    <Button className="bg-brand-purple hover:bg-brand-purple/90">
-                      Aplicar Filtros
-                    </Button>
-                  </SheetClose>
+
+              <Separator />
+
+              {/* Price Range Filter */}
+              <div className="space-y-2">
+                <Label>Preço</Label>
+                <div className="flex items-center justify-between">
+                  <span>{formatCurrency(priceRange[0])}</span>
+                  <span>{formatCurrency(priceRange[1])}</span>
                 </div>
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
+                <Slider
+                  defaultValue={priceRange}
+                  max={1000}
+                  step={10}
+                  onValueChange={(value) => setPriceRange(value)}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Availability Filter */}
+              <div className="space-y-2">
+                <Label>Disponibilidade</Label>
+                <Select defaultValue={availabilityFilter} onValueChange={setAvailabilityFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="in-stock">Em estoque</SelectItem>
+                    <SelectItem value="out-of-stock">Esgotado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator />
+
+              {/* Sale Status Filter */}
+              <div className="space-y-2">
+                <Label>Status de Venda</Label>
+                <Select defaultValue={saleStatusFilter} onValueChange={setSaleStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="on-sale">Em promoção</SelectItem>
+                    <SelectItem value="regular">Preço normal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
 
-      <Separator className="mb-8" />
-
-      {/* Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {currentProducts.map((product) => (
-          <ProductCard
-            key={product.id}
-            id={product.id}
-            name={product.name}
-            price={product.regular_price}
-            salePrice={product.sale_price}
-            promoPrice={product.promotional_price}
-            imageUrl={product.product_images.find((img) => img.is_primary)?.image_url || product.product_images[0]?.image_url || '/placeholder.svg'}
-            isRental={product.is_rental}
-            rentalPrice={product.rental_price}
-          />
-        ))}
-      </div>
-
-      {/* Pagination */}
-      {products.length > productsPerPage && (
-        <div className="flex justify-center mt-8">
-          <Button
-            variant="outline"
-            disabled={currentPage === 1}
-            onClick={() => paginate(currentPage - 1)}
-          >
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            Anterior
-          </Button>
-          <div className="flex items-center mx-2">
-            {pageNumbers.map((number) => (
-              <Button
-                key={number}
-                variant={currentPage === number ? 'default' : 'outline'}
-                onClick={() => paginate(number)}
-                className={cn(
-                  "mx-1",
-                  currentPage === number && "bg-brand-purple text-white hover:bg-brand-purple/90"
-                )}
-              >
-                {number}
-              </Button>
+        {/* Product Listing Section */}
+        <div className="md:col-span-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredProducts?.map((product) => (
+              <Card key={product.id} className="bg-white shadow-md rounded-md overflow-hidden">
+                <div className="relative">
+                  <img
+                    src={product.images[0].image_url}
+                    alt={product.name}
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="absolute top-2 right-2">
+                    {isInFavorites(product.id) ? (
+                      <button onClick={() => handleRemoveFromFavorites(product.id)}>
+                        <Heart className="text-red-500 h-6 w-6" />
+                      </button>
+                    ) : (
+                      <button onClick={() => handleAddToFavorites(product)}>
+                        <HeartOff className="text-gray-500 hover:text-red-500 h-6 w-6" />
+                      </button>
+                    )}
+                  </div>
+                  {product.sale_price !== null && (
+                    <Badge className="absolute bottom-2 left-2 bg-green-500 text-white">
+                      Em promoção
+                    </Badge>
+                  )}
+                </div>
+                <CardContent className="p-4">
+                  <CardTitle className="text-lg font-semibold line-clamp-1">{product.name}</CardTitle>
+                  <CardDescription className="text-gray-500 line-clamp-2">{product.description}</CardDescription>
+                  <div className="mt-2">
+                    {product.sale_price !== null ? (
+                      <>
+                        <span className="text-red-500 font-bold">{formatCurrency(product.sale_price)}</span>
+                        <span className="text-gray-500 line-through ml-2">{formatCurrency(product.price)}</span>
+                      </>
+                    ) : (
+                      <span className="font-bold">{formatCurrency(product.price)}</span>
+                    )}
+                  </div>
+                  <Button
+                    className="mt-4 w-full bg-brand-purple hover:bg-brand-purple/90 text-white"
+                    onClick={() => navigate(`/product/${product.id}`)}
+                  >
+                    Ver detalhes
+                  </Button>
+                </CardContent>
+              </Card>
             ))}
           </div>
-          <Button
-            variant="outline"
-            disabled={currentPage === pageNumbers.length}
-            onClick={() => paginate(currentPage + 1)}
-          >
-            Próxima
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
         </div>
-      )}
+      </div>
     </div>
   );
 };
