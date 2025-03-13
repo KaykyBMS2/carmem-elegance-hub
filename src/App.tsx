@@ -15,6 +15,7 @@ import About from "./pages/About";
 import Shop from "./pages/Shop";
 import ProductDetail from "./pages/ProductDetail";
 import Checkout from "./pages/Checkout";
+import OrderConfirmation from "./pages/OrderConfirmation";
 import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/admin/Login";
@@ -27,6 +28,7 @@ import OrderDetail from './pages/admin/OrderDetail';
 import AdminCustomers from './pages/admin/Customers';
 import CustomerDetail from './pages/admin/CustomerDetail';
 import Categories from './pages/admin/Categories';
+import CouponManagement from './pages/admin/CouponManagement';
 import AdminSettings from './pages/admin/AdminSettings';
 import PhotoshootManagement from './pages/admin/PhotoshootManagement';
 import Auth from "./pages/Auth/Auth";
@@ -199,6 +201,7 @@ const App = () => {
                   <Route path="/shop" element={<Shop />} />
                   <Route path="/product/:id" element={<ProductDetail />} />
                   <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
                   <Route path="/favorites" element={<Favorites />} />
                   
                   {/* Auth routes */}
@@ -275,6 +278,11 @@ const App = () => {
                   <Route path="/admin/categories" element={
                     <ProtectedRoute>
                       <Categories />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/coupons" element={
+                    <ProtectedRoute>
+                      <CouponManagement />
                     </ProtectedRoute>
                   } />
                   <Route path="/admin/settings" element={

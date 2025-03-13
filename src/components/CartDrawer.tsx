@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Minus, Plus, ShoppingBag, X } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -59,13 +59,13 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ trigger }) => {
               <p className="text-sm text-gray-500 mb-6 max-w-xs font-poppins">
                 Parece que você ainda não adicionou nenhum produto ao seu carrinho.
               </p>
-              <Sheet.Close asChild>
+              <SheetClose asChild>
                 <Link to="/shop">
                   <Button className="bg-brand-purple hover:bg-brand-purple/90">
                     Explorar produtos
                   </Button>
                 </Link>
-              </Sheet.Close>
+              </SheetClose>
             </div>
           ) : (
             <div className="space-y-4">
@@ -97,20 +97,20 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ trigger }) => {
                 Frete calculado na finalização da compra
               </div>
               <div className="grid gap-2">
-                <Sheet.Close asChild>
+                <SheetClose asChild>
                   <Link to="/checkout">
                     <Button className="w-full bg-brand-purple hover:bg-brand-purple/90">
                       Finalizar compra
                     </Button>
                   </Link>
-                </Sheet.Close>
-                <Sheet.Close asChild>
+                </SheetClose>
+                <SheetClose asChild>
                   <Link to="/shop">
                     <Button variant="outline" className="w-full">
                       Continuar comprando
                     </Button>
                   </Link>
-                </Sheet.Close>
+                </SheetClose>
               </div>
             </div>
           </div>

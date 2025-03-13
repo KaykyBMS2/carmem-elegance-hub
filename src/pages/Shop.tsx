@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useShop } from '@/contexts/ShopContext';
 import ProductCard from '@/components/ProductCard';
@@ -32,7 +33,7 @@ const Shop = () => {
   const [priceRange, setPriceRange] = useState<number[]>([0, 1000]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [productsPerPage] = useState(12);
+  const [productsPerPage] = useState(14); // Changed to 14 products per page as requested
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -108,9 +109,8 @@ const Shop = () => {
     setCurrentPage(1);
   };
 
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const categoryId = e.target.value;
-    if (e.target.checked) {
+  const handleCategoryChange = (categoryId: string, checked: boolean) => {
+    if (checked) {
       setCategoryFilter((prev) => [...prev, categoryId]);
     } else {
       setCategoryFilter((prev) => prev.filter((id) => id !== categoryId));
@@ -194,9 +194,8 @@ const Shop = () => {
                       <div key={category.id} className="flex items-center">
                         <Checkbox
                           id={`category-${category.id}`}
-                          value={category.id}
                           checked={categoryFilter.includes(category.id)}
-                          onCheckedChange={handleCategoryChange}
+                          onCheckedChange={(checked) => handleCategoryChange(category.id, !!checked)}
                         />
                         <Label htmlFor={`category-${category.id}`} className="ml-2">
                           {category.name}

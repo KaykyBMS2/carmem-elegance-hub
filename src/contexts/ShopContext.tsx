@@ -90,7 +90,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load favorites from localStorage
   useEffect(() => {
     const loadFavorites = async () => {
-      // Always use localStorage for favorites (avoiding Supabase integration for now)
+      // Always use localStorage for favorites
       const savedFavorites = localStorage.getItem('carmem_bezerra_favorites');
       if (savedFavorites) {
         try {
@@ -166,7 +166,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Favorites operations
-  const addToFavorites = async (product: FavoriteItem) => {
+  const addToFavorites = (product: FavoriteItem) => {
     // Update local state only
     setFavorites(prev => {
       if (prev.some(item => item.id === product.id)) {
@@ -181,7 +181,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const removeFromFavorites = async (productId: string) => {
+  const removeFromFavorites = (productId: string) => {
     // Update local state
     setFavorites(prev => prev.filter(item => item.id !== productId));
     
