@@ -1,11 +1,12 @@
 
 import React from "react";
-import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { useShop, CartItem } from "@/contexts/ShopContext";
+import { useShop } from "@/contexts/ShopContext";
+import type { CartItem as CartItemType } from "@/contexts/ShopContext";
 
 interface CartDrawerProps {
   trigger?: React.ReactNode;
@@ -120,7 +121,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ trigger }) => {
 };
 
 const CartItem: React.FC<{
-  item: CartItem;
+  item: CartItemType;
   onRemove: () => void;
   onUpdateQuantity: (quantity: number) => void;
 }> = ({ item, onRemove, onUpdateQuantity }) => {

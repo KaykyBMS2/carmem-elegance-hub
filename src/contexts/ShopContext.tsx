@@ -87,74 +87,17 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadCartFromStorage();
   }, []);
 
-  // Load favorites from localStorage or Supabase depending on authentication
+  // Load favorites from localStorage
   useEffect(() => {
     const loadFavorites = async () => {
-      if (isAuthenticated && user) {
+      // Always use localStorage for favorites (avoiding Supabase integration for now)
+      const savedFavorites = localStorage.getItem('carmem_bezerra_favorites');
+      if (savedFavorites) {
         try {
-          const { data, error } = await supabase
-            .from('user_favorites')
-            .select(`
-              product_id,
-              products:product_id (
-                id,
-                name,
-                regular_price,
-                sale_price,
-                promotional_price,
-                is_rental,
-                rental_price,
-                product_images (
-                  image_url,
-                  is_primary
-                )
-              )
-            `)
-            .eq('user_id', user.id);
-
-          if (error) throw error;
-
-          const formattedFavorites = data.map((item) => {
-            const product = item.products;
-            const primaryImage = product.product_images.find((img: any) => img.is_primary)?.image_url || 
-                               product.product_images[0]?.image_url || '/placeholder.svg';
-            
-            return {
-              id: product.id,
-              name: product.name,
-              price: product.regular_price,
-              salePrice: product.sale_price,
-              promoPrice: product.promotional_price,
-              imageUrl: primaryImage,
-              isRental: product.is_rental,
-              rentalPrice: product.rental_price
-            };
-          });
-
-          setFavorites(formattedFavorites);
+          setFavorites(JSON.parse(savedFavorites));
         } catch (error) {
-          console.error('Error loading favorites from Supabase:', error);
-          // Fallback to localStorage if Supabase fails
-          const savedFavorites = localStorage.getItem('carmem_bezerra_favorites');
-          if (savedFavorites) {
-            try {
-              setFavorites(JSON.parse(savedFavorites));
-            } catch (error) {
-              console.error('Failed to parse favorites from localStorage:', error);
-              localStorage.removeItem('carmem_bezerra_favorites');
-            }
-          }
-        }
-      } else {
-        // Not authenticated, use localStorage
-        const savedFavorites = localStorage.getItem('carmem_bezerra_favorites');
-        if (savedFavorites) {
-          try {
-            setFavorites(JSON.parse(savedFavorites));
-          } catch (error) {
-            console.error('Failed to parse favorites from localStorage:', error);
-            localStorage.removeItem('carmem_bezerra_favorites');
-          }
+          console.error('Failed to parse favorites from localStorage:', error);
+          localStorage.removeItem('carmem_bezerra_favorites');
         }
       }
     };
@@ -167,11 +110,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('carmem_bezerra_cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Save favorites to localStorage when they change (for non-authenticated users)
+  // Save favorites to localStorage when they change
   useEffect(() => {
-    if (!isAuthenticated) {
-      localStorage.setItem('carmem_bezerra_favorites', JSON.stringify(favorites));
-    }
+    localStorage.setItem('carmem_bezerra_favorites', JSON.stringify(favorites));
   }, [favorites, isAuthenticated]);
 
   // Cart operations
@@ -226,30 +167,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Favorites operations
   const addToFavorites = async (product: FavoriteItem) => {
-    // If user is authenticated, save to Supabase
-    if (isAuthenticated && user) {
-      try {
-        const { error } = await supabase
-          .from('user_favorites')
-          .upsert({ 
-            user_id: user.id,
-            product_id: product.id
-          });
-
-        if (error) throw error;
-        
-      } catch (error) {
-        console.error('Error saving favorite to Supabase:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível salvar o produto nos favoritos.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-    
-    // Always update local state
+    // Update local state only
     setFavorites(prev => {
       if (prev.some(item => item.id === product.id)) {
         return prev;
@@ -264,29 +182,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const removeFromFavorites = async (productId: string) => {
-    // If user is authenticated, remove from Supabase
-    if (isAuthenticated && user) {
-      try {
-        const { error } = await supabase
-          .from('user_favorites')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('product_id', productId);
-
-        if (error) throw error;
-        
-      } catch (error) {
-        console.error('Error removing favorite from Supabase:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível remover o produto dos favoritos.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-    
-    // Always update local state
+    // Update local state
     setFavorites(prev => prev.filter(item => item.id !== productId));
     
     toast({
