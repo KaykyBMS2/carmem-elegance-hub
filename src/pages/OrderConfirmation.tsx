@@ -76,7 +76,7 @@ const OrderConfirmation = () => {
               name,
               id
             ),
-            product_images:product_id (
+            product_images:products (
               image_url
             )
           `)
@@ -88,8 +88,8 @@ const OrderConfirmation = () => {
         const processedItems: OrderItem[] = (itemsData || []).map(item => ({
           ...item,
           product: item.product || { name: 'Produto não encontrado', id: '' },
-          product_images: item.product_images?.[0]?.image_url 
-            ? [{ image_url: item.product_images[0].image_url }] 
+          product_images: Array.isArray(item.product_images) 
+            ? item.product_images.map((img: any) => ({ image_url: img.image_url }))
             : [{ image_url: '/placeholder.svg' }]
         }));
         

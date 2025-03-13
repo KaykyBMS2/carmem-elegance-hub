@@ -1,325 +1,358 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { toast } from "@/hooks/use-toast"
-import { useToast } from "@/hooks/use-toast"
-import { useQuery } from "@tanstack/react-query"
-import { supabase } from "@/integrations/supabase/client"
-import { useShop } from '@/contexts/ShopContext';
-import { FavoriteItem } from '@/contexts/ShopContext';
-import { Heart, HeartOff } from 'lucide-react';
 
-interface Product {
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import ProductCard from "@/components/ProductCard";
+import { Search, Filter, ChevronDown, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+
+// Define el tipo para un producto
+type Product = {
   id: string;
   name: string;
   description?: string;
   price: number;
-  sale_price?: number | null;
-  promo_price?: number | null;
-  inventory: number;
-  images: { image_url: string }[];
-  categories?: { id: string; name: string }[];
-  sale_start_date?: string | null;
-  sale_end_date?: string | null;
-  created_at: string;
-  updated_at: string;
-}
+  imageUrl: string;
+  category?: string;
+  isRental: boolean;
+  rentalPrice?: number;
+  rentalIncludes?: string[];
+};
+
+type Category = {
+  id: string;
+  name: string;
+};
 
 const Shop = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast()
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [priceRange, setPriceRange] = useState([0, 1000]);
-  const [availabilityFilter, setAvailabilityFilter] = useState('all');
-  const [saleStatusFilter, setSaleStatusFilter] = useState('all');
-  const { addToFavorites, removeFromFavorites, isInFavorites } = useShop();
-
-  const { data: products, isLoading, isError } = useQuery({
-    queryKey: ['products'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          categories (
-            id,
-            name
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching products:', error);
-        throw error;
-      }
-      return data as Product[];
-    },
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState({
+    categories: [] as string[],
+    rental: false,
+    purchase: false,
+    priceRange: { min: 0, max: 1000 },
   });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const { toast } = useToast();
 
-  const { data: categories, isLoading: isLoadingCategories, isError: isErrorCategories } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name', { ascending: true });
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from("products")
+          .select(`
+            *,
+            categories:product_categories(category_id)
+          `)
+          .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error('Error fetching categories:', error);
-        throw error;
+        if (error) throw error;
+
+        // Transform the data to match the Product type
+        const transformedProducts: Product[] = (data || []).map((item) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          price: item.is_rental ? item.rental_price : item.regular_price,
+          imageUrl: item.images?.[0] || "/placeholder.svg",
+          category: item.categories?.[0]?.category_id || "",
+          isRental: item.is_rental,
+          rentalPrice: item.rental_price,
+        }));
+
+        setProducts(transformedProducts);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os produtos.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
-      return data;
-    },
-  });
-
-  const handleAddToFavorites = (product: Product) => {
-    const favoriteItem: FavoriteItem = {
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      salePrice: product.sale_price || null,
-      promoPrice: product.promo_price || null,
-      imageUrl: product.images[0].image_url,
-      isRental: false,
-      rentalPrice: null,
     };
-    addToFavorites(favoriteItem);
-  };
 
-  const handleRemoveFromFavorites = (productId: string) => {
-    removeFromFavorites(productId);
-  };
+    const fetchCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("categories")
+          .select("*")
+          .order("name", { ascending: true });
 
-  // Format currency
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
+        if (error) throw error;
+        setCategories(data || []);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
 
-  // Fix the deep instantiation error by simplifying the filter function
-  // Replace the complex filtering logic with a simpler approach
-  const filteredProducts = useMemo(() => {
-    return products?.filter(product => {
-      // Filter by search term
-      const matchesSearch = searchTerm === '' ||
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    fetchProducts();
+    fetchCategories();
+  }, [toast]);
 
-      // Filter by category
-      const matchesCategory = selectedCategory === 'all' ||
-        (product.categories && product.categories.some(cat => cat.id === selectedCategory));
+  // Filter products based on search term and filters
+  const filteredProducts = products.filter((product) => {
+    // Search term filter
+    if (
+      searchTerm &&
+      !product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ) {
+      return false;
+    }
 
-      // Filter by price range
-      const matchesPriceRange = (
-        (product.price >= priceRange[0]) &&
-        (product.price <= priceRange[1])
-      );
+    // Category filter
+    if (
+      filters.categories.length > 0 &&
+      !filters.categories.includes(product.category || "")
+    ) {
+      return false;
+    }
 
-      // Filter by availability
-      const matchesAvailability = availabilityFilter === 'all' ||
-        (availabilityFilter === 'in-stock' && product.inventory > 0) ||
-        (availabilityFilter === 'out-of-stock' && product.inventory === 0);
+    // Rental/Purchase filter
+    if (filters.rental && !product.isRental) return false;
+    if (filters.purchase && product.isRental) return false;
 
-      // Filter by sale status
-      const matchesSaleStatus = saleStatusFilter === 'all' ||
-        (saleStatusFilter === 'on-sale' && product.sale_price !== null) ||
-        (saleStatusFilter === 'regular' && product.sale_price === null);
+    // Price range filter
+    if (
+      product.price < filters.priceRange.min ||
+      product.price > filters.priceRange.max
+    ) {
+      return false;
+    }
 
-      return matchesSearch && matchesCategory && matchesPriceRange &&
-        matchesAvailability && matchesSaleStatus;
+    return true;
+  });
+
+  const toggleCategoryFilter = (categoryId: string) => {
+    setFilters((prev) => {
+      const categories = prev.categories.includes(categoryId)
+        ? prev.categories.filter((id) => id !== categoryId)
+        : [...prev.categories, categoryId];
+      return { ...prev, categories };
     });
-  }, [products, searchTerm, selectedCategory, priceRange, availabilityFilter, saleStatusFilter]);
+  };
 
-  if (isLoading || isLoadingCategories) {
-    return <div className="flex justify-center items-center h-screen">Carregando...</div>;
-  }
-
-  if (isError || isErrorCategories) {
-    return <div className="flex justify-center items-center h-screen">Erro ao carregar os produtos.</div>;
-  }
+  const clearFilters = () => {
+    setFilters({
+      categories: [],
+      rental: false,
+      purchase: false,
+      priceRange: { min: 0, max: 1000 },
+    });
+    setSearchTerm("");
+  };
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-4">Nossos Produtos</h1>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Filters Section */}
-        <div className="md:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Filtros</CardTitle>
-              <CardDescription>Filtrar produtos por categoria, preço e mais.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Search Filter */}
-              <div className="space-y-2">
-                <Label htmlFor="search">Pesquisar</Label>
+      <main className="flex-1 pt-24 pb-12">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-start mb-10">
+            <h1 className="text-3xl font-bold font-montserrat mb-2">Loja</h1>
+            <p className="text-muted-foreground mb-6">
+              Explore nossa seleção de produtos e vestidos para aluguel
+            </p>
+
+            {/* Search and filter bar */}
+            <div className="w-full flex flex-wrap gap-4 items-center">
+              <div className="relative flex-1 min-w-[240px]">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <Input
                   type="text"
-                  id="search"
-                  placeholder="Pesquisar produtos..."
+                  placeholder="Buscar produtos..."
+                  className="w-full pl-10"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+              <Button
+                variant="outline"
+                onClick={() => setFiltersOpen(!filtersOpen)}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Filtros
+                <ChevronDown className="h-4 w-4 ml-1" />
+              </Button>
+              {(filters.categories.length > 0 ||
+                filters.rental ||
+                filters.purchase ||
+                searchTerm) && (
+                <Button
+                  variant="ghost"
+                  onClick={clearFilters}
+                  className="text-sm text-muted-foreground"
+                >
+                  <X className="h-4 w-4 mr-1" /> Limpar filtros
+                </Button>
+              )}
+            </div>
 
-              <Separator />
-
-              {/* Category Filter */}
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <ScrollArea className="h-[200px] rounded-md border p-2">
-                  <RadioGroup defaultValue={selectedCategory} onValueChange={setSelectedCategory}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="all" id="category-all" />
-                      <Label htmlFor="category-all">Todas</Label>
+            {/* Filter panel */}
+            {filtersOpen && (
+              <div className="w-full mt-4 p-4 bg-white border rounded-lg shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Categories */}
+                  <div>
+                    <h3 className="font-medium mb-3">Categorias</h3>
+                    <div className="space-y-2">
+                      {categories.map((category) => (
+                        <div key={category.id} className="flex items-center">
+                          <Checkbox
+                            id={`category-${category.id}`}
+                            checked={filters.categories.includes(category.id)}
+                            onCheckedChange={() =>
+                              toggleCategoryFilter(category.id)
+                            }
+                          />
+                          <label
+                            htmlFor={`category-${category.id}`}
+                            className="ml-2 text-sm font-medium"
+                          >
+                            {category.name}
+                          </label>
+                        </div>
+                      ))}
                     </div>
-                    {categories?.map((category) => (
-                      <div className="flex items-center space-x-2" key={category.id}>
-                        <RadioGroupItem value={category.id} id={`category-${category.id}`} />
-                        <Label htmlFor={`category-${category.id}`}>{category.name}</Label>
+                  </div>
+
+                  {/* Type */}
+                  <div>
+                    <h3 className="font-medium mb-3">Tipo</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <Checkbox
+                          id="rental"
+                          checked={filters.rental}
+                          onCheckedChange={(checked) =>
+                            setFilters({ ...filters, rental: checked === true })
+                          }
+                        />
+                        <label
+                          htmlFor="rental"
+                          className="ml-2 text-sm font-medium"
+                        >
+                          Aluguel
+                        </label>
                       </div>
-                    ))}
-                  </RadioGroup>
-                </ScrollArea>
-              </div>
-
-              <Separator />
-
-              {/* Price Range Filter */}
-              <div className="space-y-2">
-                <Label>Preço</Label>
-                <div className="flex items-center justify-between">
-                  <span>{formatCurrency(priceRange[0])}</span>
-                  <span>{formatCurrency(priceRange[1])}</span>
-                </div>
-                <Slider
-                  defaultValue={priceRange}
-                  max={1000}
-                  step={10}
-                  onValueChange={(value) => setPriceRange(value)}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Availability Filter */}
-              <div className="space-y-2">
-                <Label>Disponibilidade</Label>
-                <Select defaultValue={availabilityFilter} onValueChange={setAvailabilityFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="in-stock">Em estoque</SelectItem>
-                    <SelectItem value="out-of-stock">Esgotado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Separator />
-
-              {/* Sale Status Filter */}
-              <div className="space-y-2">
-                <Label>Status de Venda</Label>
-                <Select defaultValue={saleStatusFilter} onValueChange={setSaleStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="on-sale">Em promoção</SelectItem>
-                    <SelectItem value="regular">Preço normal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Product Listing Section */}
-        <div className="md:col-span-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProducts?.map((product) => (
-              <Card key={product.id} className="bg-white shadow-md rounded-md overflow-hidden">
-                <div className="relative">
-                  <img
-                    src={product.images[0].image_url}
-                    alt={product.name}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="absolute top-2 right-2">
-                    {isInFavorites(product.id) ? (
-                      <button onClick={() => handleRemoveFromFavorites(product.id)}>
-                        <Heart className="text-red-500 h-6 w-6" />
-                      </button>
-                    ) : (
-                      <button onClick={() => handleAddToFavorites(product)}>
-                        <HeartOff className="text-gray-500 hover:text-red-500 h-6 w-6" />
-                      </button>
-                    )}
+                      <div className="flex items-center">
+                        <Checkbox
+                          id="purchase"
+                          checked={filters.purchase}
+                          onCheckedChange={(checked) =>
+                            setFilters({
+                              ...filters,
+                              purchase: checked === true,
+                            })
+                          }
+                        />
+                        <label
+                          htmlFor="purchase"
+                          className="ml-2 text-sm font-medium"
+                        >
+                          Compra
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                  {product.sale_price !== null && (
-                    <Badge className="absolute bottom-2 left-2 bg-green-500 text-white">
-                      Em promoção
-                    </Badge>
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <CardTitle className="text-lg font-semibold line-clamp-1">{product.name}</CardTitle>
-                  <CardDescription className="text-gray-500 line-clamp-2">{product.description}</CardDescription>
-                  <div className="mt-2">
-                    {product.sale_price !== null ? (
-                      <>
-                        <span className="text-red-500 font-bold">{formatCurrency(product.sale_price)}</span>
-                        <span className="text-gray-500 line-through ml-2">{formatCurrency(product.price)}</span>
-                      </>
-                    ) : (
-                      <span className="font-bold">{formatCurrency(product.price)}</span>
-                    )}
+
+                  {/* Price Range */}
+                  <div>
+                    <h3 className="font-medium mb-3">Faixa de Preço</h3>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground">
+                            Min
+                          </label>
+                          <Input
+                            type="number"
+                            value={filters.priceRange.min}
+                            onChange={(e) =>
+                              setFilters({
+                                ...filters,
+                                priceRange: {
+                                  ...filters.priceRange,
+                                  min: Number(e.target.value),
+                                },
+                              })
+                            }
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">
+                            Max
+                          </label>
+                          <Input
+                            type="number"
+                            value={filters.priceRange.max}
+                            onChange={(e) =>
+                              setFilters({
+                                ...filters,
+                                priceRange: {
+                                  ...filters.priceRange,
+                                  max: Number(e.target.value),
+                                },
+                              })
+                            }
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <Button
-                    className="mt-4 w-full bg-brand-purple hover:bg-brand-purple/90 text-white"
-                    onClick={() => navigate(`/product/${product.id}`)}
-                  >
-                    Ver detalhes
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Product Grid */}
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-purple border-t-transparent"></div>
+            </div>
+          ) : filteredProducts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  price={product.isRental ? 0 : product.price}
+                  imageUrl={product.imageUrl}
+                  isRental={product.isRental}
+                  rentalPrice={product.rentalPrice}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <h3 className="text-xl font-medium mb-2">
+                Nenhum produto encontrado
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Tente ajustar seus filtros ou buscar por outro termo.
+              </p>
+              <Button onClick={clearFilters}>Limpar filtros</Button>
+            </div>
+          )}
         </div>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };
