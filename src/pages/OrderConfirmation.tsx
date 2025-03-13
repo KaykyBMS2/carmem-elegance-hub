@@ -1,23 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { CheckCircle2, ChevronRight, Clock, CreditCard, QrCode, Copy, Money } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import { 
-  CheckCircle, 
-  Clock, 
-  Calendar, 
-  ShoppingBag, 
-  ChevronRight,
-  CreditCard,
-  QrCode,
-  Wallet,
-  Receipt
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { pt } from 'date-fns/locale';
 
 interface OrderItem {
   id: string;
@@ -25,369 +16,359 @@ interface OrderItem {
   quantity: number;
   price: number;
   is_rental: boolean;
-  rental_start_date: string | null;
-  rental_end_date: string | null;
   product: {
     name: string;
-    product_images: { image_url: string }[];
+    id: string;
   };
+  product_images: {
+    image_url: string;
+  }[];
 }
 
 interface Order {
   id: string;
   customer_name: string;
   customer_email: string;
-  created_at: string;
-  status: string;
+  customer_phone: string;
   total_amount: number;
-  payment_method: 'credit_card' | 'debit_card' | 'pix' | 'boleto';
+  status: string;
+  payment_method: string;
   payment_status: string;
   coupon_discount: number;
   installments: number;
+  created_at: string;
   rental_start_date: string | null;
   rental_end_date: string | null;
-  items: OrderItem[];
+  rental_pickup_preference: string | null;
+  customer_notes: string | null;
 }
 
 const OrderConfirmation = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  
   useEffect(() => {
-    const fetchOrder = async () => {
+    const fetchOrderDetails = async () => {
       if (!orderId) return;
       
       try {
         setLoading(true);
         
-        const { data, error } = await supabase
+        // Fetch order details
+        const { data: orderData, error: orderError } = await supabase
           .from('orders')
-          .select(`
-            id,
-            customer_name,
-            customer_email,
-            customer_phone,
-            created_at,
-            status,
-            total_amount,
-            payment_method,
-            payment_status,
-            coupon_discount,
-            installments,
-            rental_start_date,
-            rental_end_date
-          `)
+          .select('*')
           .eq('id', orderId)
           .single();
+          
+        if (orderError) throw orderError;
         
-        if (error) {
-          throw new Error('Pedido não encontrado');
-        }
+        setOrder(orderData);
         
-        // Fetch order items
+        // Fetch order items with product details
         const { data: itemsData, error: itemsError } = await supabase
           .from('order_items')
           .select(`
-            id,
-            product_id,
-            quantity,
-            price,
-            is_rental,
-            rental_start_date,
-            rental_end_date,
+            *,
             product:product_id (
               name,
-              product_images (image_url)
+              id
+            ),
+            product_images:product_id (
+              image_url
             )
           `)
           .eq('order_id', orderId);
+          
+        if (itemsError) throw itemsError;
         
-        if (itemsError) {
-          throw new Error('Erro ao carregar itens do pedido');
-        }
-        
-        setOrder({ ...data, items: itemsData } as Order);
-        
+        setOrderItems(itemsData || []);
       } catch (error) {
-        console.error('Error fetching order:', error);
-        setError(error instanceof Error ? error.message : 'Erro ao carregar o pedido');
+        console.error('Error fetching order details:', error);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchOrder();
+    fetchOrderDetails();
   }, [orderId]);
-
+  
   // Format currency
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
     }).format(value);
   };
   
-  // Format date
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('pt-BR').format(date);
+  // Format payment method display
+  const formatPaymentMethod = (method: string) => {
+    const methods: Record<string, { label: string; icon: React.ReactNode }> = {
+      'credit_card': { 
+        label: 'Cartão de Crédito', 
+        icon: <CreditCard className="h-4 w-4" /> 
+      },
+      'debit_card': { 
+        label: 'Cartão de Débito', 
+        icon: <CreditCard className="h-4 w-4" /> 
+      },
+      'pix': { 
+        label: 'PIX', 
+        icon: <QrCode className="h-4 w-4" /> 
+      },
+      'boleto': { 
+        label: 'Boleto Bancário', 
+        icon: <Money className="h-4 w-4" /> 
+      },
+    };
+    
+    return methods[method] || { label: method, icon: null };
   };
-
-  // Get payment method icon and text
-  const getPaymentMethod = (method: string) => {
-    switch (method) {
-      case 'credit_card':
-        return { icon: <CreditCard className="h-5 w-5" />, text: 'Cartão de Crédito' };
-      case 'debit_card':
-        return { icon: <Wallet className="h-5 w-5" />, text: 'Cartão de Débito' };
-      case 'pix':
-        return { icon: <QrCode className="h-5 w-5" />, text: 'Pix' };
-      case 'boleto':
-        return { icon: <Receipt className="h-5 w-5" />, text: 'Boleto Bancário' };
-      default:
-        return { icon: <CreditCard className="h-5 w-5" />, text: 'Método de Pagamento' };
-    }
+  
+  // Format pickup preference display
+  const formatPickupPreference = (preference: string | null) => {
+    if (!preference) return 'Não especificado';
+    
+    const preferences: Record<string, string> = {
+      'store': 'Retirar na loja',
+      'delivery': 'Entrega no endereço',
+      'appointment': 'Agendar visita para prova',
+    };
+    
+    return preferences[preference] || preference;
   };
-
+  
+  // Copy order ID to clipboard
+  const copyOrderId = () => {
+    if (!order) return;
+    
+    navigator.clipboard.writeText(order.id);
+    toast({
+      title: "Copiado!",
+      description: "Número do pedido copiado para a área de transferência",
+    });
+  };
+  
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <div className="flex-grow container mx-auto px-4 py-12">
-          <div className="max-w-3xl mx-auto">
-            <Skeleton className="h-12 w-2/3 mb-6" />
-            <Skeleton className="h-8 w-1/2 mb-4" />
-            <Skeleton className="h-32 w-full mb-8 rounded-lg" />
-            <Skeleton className="h-20 w-full mb-4 rounded-lg" />
-            <Skeleton className="h-20 w-full mb-4 rounded-lg" />
-            <Skeleton className="h-20 w-full rounded-lg" />
-          </div>
-        </div>
-        <Footer />
+      <div className="container mx-auto max-w-3xl py-16 px-4 flex justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-purple border-t-transparent"></div>
       </div>
     );
   }
-
-  if (error || !order) {
+  
+  if (!order) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <div className="flex-grow container mx-auto px-4 py-12 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold mb-4 font-montserrat">Pedido não encontrado</h1>
-            <p className="text-gray-600 mb-8">Não foi possível encontrar o pedido solicitado.</p>
-            <Link to="/shop">
-              <Button className="bg-brand-purple hover:bg-brand-purple/90">
-                Voltar para a loja
-              </Button>
-            </Link>
-          </div>
-        </div>
-        <Footer />
+      <div className="container mx-auto max-w-3xl py-16 px-4">
+        <Card className="text-center py-8">
+          <CardContent>
+            <h1 className="text-2xl font-bold font-montserrat mb-4">Pedido não encontrado</h1>
+            <p className="text-muted-foreground mb-6">
+              Não foi possível encontrar informações para o pedido solicitado.
+            </p>
+            <Button asChild className="bg-brand-purple hover:bg-brand-purple/90">
+              <Link to="/shop">Voltar para a loja</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
-
+  
+  const { payment_method } = order;
+  const paymentInfo = formatPaymentMethod(payment_method);
+  
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar />
-      
-      <div className="flex-grow container mx-auto px-4 py-12">
-        <div className="max-w-3xl mx-auto">
-          {/* Order Success Header */}
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center bg-green-100 text-green-600 rounded-full p-3 mb-4">
-              <CheckCircle className="h-8 w-8" />
+    <div className="container mx-auto max-w-3xl py-16 px-4">
+      <Card>
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle2 className="h-6 w-6 text-green-600" />
+          </div>
+          <CardTitle className="text-2xl font-bold font-montserrat">
+            Pedido Confirmado!
+          </CardTitle>
+        </CardHeader>
+        
+        <CardContent className="space-y-6">
+          <div className="rounded-lg bg-muted p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Número do pedido</p>
+                <div className="flex items-center">
+                  <p className="font-montserrat font-medium">
+                    {order.id.split('-')[0]}...
+                  </p>
+                  <button 
+                    onClick={copyOrderId} 
+                    className="ml-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Data do pedido</p>
+                <p className="font-medium">
+                  {format(new Date(order.created_at), 'dd/MM/yyyy', { locale: pt })}
+                </p>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold mb-2 font-montserrat">Pedido Recebido!</h1>
-            <p className="text-gray-600 font-poppins">
-              Seu pedido foi confirmado e está sendo processado.
-            </p>
           </div>
           
-          {/* Order Details Card */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold font-montserrat">Detalhes do Pedido</h2>
-              <span className="text-sm text-gray-500">#{order.id.slice(0, 8)}</span>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div>
+            <h3 className="text-lg font-medium font-montserrat mb-3">Seus dados</h3>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Data</p>
-                <p className="font-medium">{formatDate(order.created_at)}</p>
+                <dt className="text-muted-foreground">Nome</dt>
+                <dd>{order.customer_name}</dd>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-1">Total</p>
-                <p className="font-medium text-brand-purple">{formatCurrency(order.total_amount)}</p>
+                <dt className="text-muted-foreground">Email</dt>
+                <dd>{order.customer_email}</dd>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-1">Pagamento</p>
-                <div className="flex items-center">
-                  {getPaymentMethod(order.payment_method).icon}
-                  <span className="ml-1 text-sm">{getPaymentMethod(order.payment_method).text}</span>
-                </div>
+                <dt className="text-muted-foreground">Telefone</dt>
+                <dd>{order.customer_phone || 'Não informado'}</dd>
               </div>
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Status</p>
-                <div className="flex items-center">
-                  <Clock className="h-4 w-4 text-amber-500 mr-1" />
-                  <span className="text-sm font-medium text-amber-500">Processando</span>
-                </div>
-              </div>
-            </div>
-            
-            {(order.rental_start_date || order.rental_end_date) && (
-              <>
-                <Separator className="my-4" />
-                <div className="bg-purple-50 rounded-md p-4 mb-4">
-                  <h3 className="font-medium mb-2 flex items-center font-montserrat">
-                    <Calendar className="h-4 w-4 mr-2 text-brand-purple" />
-                    Informações do Aluguel
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Data de Retirada</p>
-                      <p className="font-medium">{formatDate(order.rental_start_date || '')}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Data de Devolução</p>
-                      <p className="font-medium">{formatDate(order.rental_end_date || '')}</p>
-                    </div>
+            </dl>
+          </div>
+          
+          {(order.rental_start_date || order.rental_end_date) && (
+            <div>
+              <h3 className="text-lg font-medium font-montserrat mb-3">Detalhes do Aluguel</h3>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                {order.rental_start_date && (
+                  <div>
+                    <dt className="text-muted-foreground">Data de Retirada</dt>
+                    <dd>{format(new Date(order.rental_start_date), 'dd/MM/yyyy', { locale: pt })}</dd>
                   </div>
+                )}
+                {order.rental_end_date && (
+                  <div>
+                    <dt className="text-muted-foreground">Data de Devolução</dt>
+                    <dd>{format(new Date(order.rental_end_date), 'dd/MM/yyyy', { locale: pt })}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-muted-foreground">Preferência de Retirada</dt>
+                  <dd>{formatPickupPreference(order.rental_pickup_preference)}</dd>
                 </div>
-              </>
-            )}
-          </div>
+              </dl>
+              {order.customer_notes && (
+                <div className="mt-3">
+                  <p className="text-muted-foreground text-sm">Observações:</p>
+                  <p className="text-sm">{order.customer_notes}</p>
+                </div>
+              )}
+            </div>
+          )}
           
-          {/* Order Items */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4 font-montserrat">Itens do Pedido</h2>
-            
-            <div className="space-y-4">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex items-center">
-                  <div className="h-16 w-16 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
-                    <img 
-                      src={item.product.product_images[0]?.image_url || '/placeholder.svg'} 
-                      alt={item.product.name} 
-                      className="w-full h-full object-cover"
+          <div>
+            <h3 className="text-lg font-medium font-montserrat mb-3">Itens do Pedido</h3>
+            <div className="space-y-3">
+              {orderItems.map((item) => (
+                <div key={item.id} className="flex gap-3">
+                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
+                    <img
+                      src={item.product_images?.[0]?.image_url || '/placeholder.svg'}
+                      alt={item.product?.name}
+                      className="h-full w-full object-cover object-center"
                     />
                   </div>
-                  <div className="ml-4 flex-grow min-w-0">
-                    <p className="font-medium truncate">{item.product.name}</p>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <span>Qtd: {item.quantity}</span>
-                      {item.is_rental && (
-                        <span className="ml-2 text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
-                          Aluguel
-                        </span>
-                      )}
+                  <div className="flex flex-1 flex-col">
+                    <div className="flex justify-between text-sm font-medium text-gray-900">
+                      <h3 className="font-montserrat">
+                        {item.product?.name}
+                        {item.is_rental && <span className="text-brand-purple"> (Aluguel)</span>}
+                      </h3>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{formatCurrency(item.price * item.quantity)}</p>
-                    <p className="text-sm text-gray-500">{formatCurrency(item.price)} por unidade</p>
+                    <div className="mt-auto flex items-end justify-between">
+                      <p className="text-xs text-gray-500">Qtd: {item.quantity}</p>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatCurrency(item.price * item.quantity)}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+          
+          <Separator />
+          
+          <div>
+            <h3 className="text-lg font-medium font-montserrat mb-3">Resumo do Pagamento</h3>
             
-            <Separator className="my-4" />
+            <div className="flex items-center mb-4">
+              <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                {paymentInfo.icon}
+              </div>
+              <div>
+                <p className="font-medium">{paymentInfo.label}</p>
+                {order.payment_method === 'credit_card' && order.installments > 1 && (
+                  <p className="text-sm text-muted-foreground">
+                    {order.installments}x de {formatCurrency(order.total_amount / order.installments)}
+                  </p>
+                )}
+              </div>
+            </div>
             
-            {/* Order Summary */}
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Subtotal</span>
-                <span>{formatCurrency(order.total_amount + order.coupon_discount)}</span>
+            <div className="rounded-lg border p-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>{formatCurrency(order.total_amount + order.coupon_discount)}</span>
+                </div>
+                
+                {order.coupon_discount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Desconto de cupom</span>
+                    <span className="text-green-600">-{formatCurrency(order.coupon_discount)}</span>
+                  </div>
+                )}
+                
+                <Separator />
+                
+                <div className="flex justify-between font-medium">
+                  <span>Total</span>
+                  <span>{formatCurrency(order.total_amount)}</span>
+                </div>
               </div>
-              
-              {order.coupon_discount > 0 && (
-                <div className="flex justify-between text-sm text-green-600 mb-2">
-                  <span>Desconto</span>
-                  <span>-{formatCurrency(order.coupon_discount)}</span>
-                </div>
-              )}
-              
-              {order.payment_method === 'pix' && (
-                <div className="flex justify-between text-sm text-green-600 mb-2">
-                  <span>Desconto Pix (5%)</span>
-                  <span>-{formatCurrency((order.total_amount + order.coupon_discount) * 0.05)}</span>
-                </div>
-              )}
-              
-              <div className="flex justify-between font-bold mt-2">
-                <span>Total</span>
-                <span className="text-brand-purple">{formatCurrency(order.total_amount)}</span>
-              </div>
-              
-              {order.payment_method === 'credit_card' && order.installments > 1 && (
-                <div className="text-right text-sm text-gray-500 mt-1">
-                  {order.installments}x de {formatCurrency(order.total_amount / order.installments)}
-                </div>
-              )}
             </div>
           </div>
           
-          {/* Next Steps and Support */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-4 font-montserrat">Próximos Passos</h2>
-            
-            <div className="mb-4">
-              <p className="text-gray-600 mb-2 font-poppins">
-                Você receberá um email de confirmação em <span className="font-medium">{order.customer_email}</span> com os detalhes do seu pedido.
-              </p>
-              
-              {order.payment_method === 'boleto' && (
-                <div className="bg-amber-50 p-4 rounded-md mt-4 flex items-start">
-                  <span className="p-1 bg-amber-100 rounded-full mr-3 mt-0.5">
-                    <Receipt className="h-4 w-4 text-amber-600" />
-                  </span>
-                  <div>
-                    <p className="font-medium text-amber-800 mb-1">Aguardando pagamento do boleto</p>
-                    <p className="text-sm text-amber-700">
-                      Enviamos o boleto para o seu email. Por favor, realize o pagamento para que possamos processar seu pedido.
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {order.payment_method === 'pix' && (
-                <div className="bg-green-50 p-4 rounded-md mt-4 flex items-start">
-                  <span className="p-1 bg-green-100 rounded-full mr-3 mt-0.5">
-                    <QrCode className="h-4 w-4 text-green-600" />
-                  </span>
-                  <div>
-                    <p className="font-medium text-green-800 mb-1">Pix gerado</p>
-                    <p className="text-sm text-green-700">
-                      Enviamos os dados do Pix para o seu email. Realize o pagamento para confirmar seu pedido.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4 mt-8">
-              <Link to="/shop" className="flex-1">
-                <Button variant="outline" className="w-full">
-                  Continuar Comprando
-                </Button>
-              </Link>
-              <Link to="/profile/orders" className="flex-1">
-                <Button className="w-full bg-brand-purple hover:bg-brand-purple/90">
-                  Meus Pedidos
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </Link>
+          <div className="rounded-lg bg-brand-purple/10 p-4">
+            <div className="flex">
+              <Clock className="h-5 w-5 text-brand-purple mr-2" />
+              <div>
+                <h4 className="font-medium font-montserrat">Status do Pedido: {order.status.toUpperCase()}</h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Você receberá atualizações sobre o status do seu pedido por email.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-      
-      <Footer />
+        </CardContent>
+        
+        <CardFooter className="flex flex-col space-y-2 sm:flex-row sm:justify-between sm:space-x-0 sm:space-y-0">
+          <Button asChild variant="outline">
+            <Link to="/shop">
+              Continuar comprando
+            </Link>
+          </Button>
+          <Button asChild className="bg-brand-purple hover:bg-brand-purple/90">
+            <Link to="/profile/orders">
+              <span>Meus Pedidos</span>
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 };

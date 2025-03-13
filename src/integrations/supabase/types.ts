@@ -123,6 +123,54 @@ export type Database = {
         }
         Relationships: []
       }
+      discount_coupons: {
+        Row: {
+          code: string
+          created_at: string | null
+          created_by: string | null
+          current_uses: number | null
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          min_purchase_amount: number | null
+          starts_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          discount_type: string
+          discount_value: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          min_purchase_amount?: number | null
+          starts_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          min_purchase_amount?: number | null
+          starts_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       maternity_photoshoots: {
         Row: {
           created_at: string
@@ -240,36 +288,77 @@ export type Database = {
       }
       orders: {
         Row: {
+          coupon_discount: number | null
+          coupon_id: string | null
           created_at: string
           customer_email: string
           customer_name: string
+          customer_notes: string | null
           customer_phone: string | null
+          external_reference: string | null
           id: string
+          installments: number | null
+          mercadopago_payment_id: string | null
+          payment_method: string | null
+          payment_status: string | null
+          rental_end_date: string | null
+          rental_pickup_preference: string | null
+          rental_start_date: string | null
           status: string
           total_amount: number
           updated_at: string
         }
         Insert: {
+          coupon_discount?: number | null
+          coupon_id?: string | null
           created_at?: string
           customer_email: string
           customer_name: string
+          customer_notes?: string | null
           customer_phone?: string | null
+          external_reference?: string | null
           id?: string
+          installments?: number | null
+          mercadopago_payment_id?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          rental_end_date?: string | null
+          rental_pickup_preference?: string | null
+          rental_start_date?: string | null
           status?: string
           total_amount: number
           updated_at?: string
         }
         Update: {
+          coupon_discount?: number | null
+          coupon_id?: string | null
           created_at?: string
           customer_email?: string
           customer_name?: string
+          customer_notes?: string | null
           customer_phone?: string | null
+          external_reference?: string | null
           id?: string
+          installments?: number | null
+          mercadopago_payment_id?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          rental_end_date?: string | null
+          rental_pickup_preference?: string | null
+          rental_start_date?: string | null
           status?: string
           total_amount?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "discount_coupons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_categories: {
         Row: {

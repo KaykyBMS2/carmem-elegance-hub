@@ -1,306 +1,105 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect, createContext, useContext } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { ShopProvider } from "@/contexts/ShopContext";
+import { Routes, Route } from "react-router-dom";
+
+// Pages
 import Index from "./pages/Index";
+import About from "./pages/About";
 import Gallery from "./pages/Gallery";
 import Contact from "./pages/Contact";
-import About from "./pages/About";
 import Shop from "./pages/Shop";
 import ProductDetail from "./pages/ProductDetail";
+import Favorites from "./pages/Favorites";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
-import Favorites from "./pages/Favorites";
-import NotFound from "./pages/NotFound";
-import Login from "./pages/admin/Login";
-import AdminLogin from './pages/admin/Login';
-import AdminDashboard from './pages/admin/Dashboard';
-import AdminProducts from './pages/admin/Products';
-import ProductForm from './pages/admin/ProductForm';
-import AdminOrders from './pages/admin/Orders';
-import OrderDetail from './pages/admin/OrderDetail';
-import AdminCustomers from './pages/admin/Customers';
-import CustomerDetail from './pages/admin/CustomerDetail';
-import Categories from './pages/admin/Categories';
-import CouponManagement from './pages/admin/CouponManagement';
-import AdminSettings from './pages/admin/AdminSettings';
-import PhotoshootManagement from './pages/admin/PhotoshootManagement';
+
+// Auth pages
 import Auth from "./pages/Auth/Auth";
+import Login from "./pages/Auth/Login";
+import Register from "./pages/Auth/Register";
+
+// Profile pages
 import UserProfileLayout from "./pages/Profile/UserProfileLayout";
 import UserProfile from "./pages/Profile/UserProfile";
-import OrderHistory from "./pages/Profile/OrderHistory";
 import NotificationPanel from "./pages/Profile/NotificationPanel";
+import OrderHistory from "./pages/Profile/OrderHistory";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+// Admin pages
+import AdminLogin from "./pages/admin/Login";
+import Dashboard from "./pages/admin/Dashboard";
+import Products from "./pages/admin/Products";
+import ProductForm from "./pages/admin/ProductForm";
+import Categories from "./pages/admin/Categories";
+import Orders from "./pages/admin/Orders";
+import OrderDetail from "./pages/admin/OrderDetail";
+import Customers from "./pages/admin/Customers";
+import CustomerDetail from "./pages/admin/CustomerDetail";
+import PhotoshootManagement from "./pages/admin/PhotoshootManagement";
+import AdminSettings from "./pages/admin/AdminSettings";
+import CouponManagement from "./pages/admin/CouponManagement";
 
-export const AuthContext = createContext<{
-  isAuthenticated: boolean;
-  isAdmin: boolean;
-  isLoading: boolean;
-  user: any;
-}>({
-  isAuthenticated: false,
-  isAdmin: false,
-  isLoading: true,
-  user: null,
-});
+// Error pages
+import NotFound from "./pages/NotFound";
 
-// Protected Route component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useContext(AuthContext);
-  
-  if (isLoading) {
-    return <div className="flex h-screen w-full items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
-    </div>;
-  }
+// Context providers
+import { AuthProvider } from "./contexts/AuthContext";
+import { ShopProvider } from "./contexts/ShopContext";
 
-  if (!isAuthenticated) {
-    return <Navigate to="/admin/login" replace />;
-  }
+// Components
+import { Toaster } from "./components/ui/toaster";
 
-  return <>{children}</>;
-};
+import "./App.css";
 
-// Customer Protected Route component
-const CustomerProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  
-  if (isLoading) {
-    return <div className="flex h-screen w-full items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-purple border-t-transparent"></div>
-    </div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/auth/login" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-const App = () => {
-  const [authState, setAuthState] = useState({
-    isAuthenticated: false,
-    isAdmin: false,
-    isLoading: true,
-    user: null,
-  });
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        
-        if (data.session) {
-          const { data: adminData, error } = await supabase
-            .from('admin_users')
-            .select('role')
-            .eq('id', data.session.user.id)
-            .single();
-          
-          if (error && error.code !== 'PGRST116') {
-            console.error("Error checking admin status:", error);
-          }
-            
-          setAuthState({
-            isAuthenticated: true,
-            isAdmin: !!adminData,
-            isLoading: false,
-            user: data.session.user,
-          });
-        } else {
-          setAuthState({
-            isAuthenticated: false,
-            isAdmin: false,
-            isLoading: false,
-            user: null,
-          });
-        }
-      } catch (error) {
-        console.error("Error checking auth:", error);
-        setAuthState({
-          isAuthenticated: false,
-          isAdmin: false,
-          isLoading: false,
-          user: null,
-        });
-      }
-    };
-
-    checkAuth();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Admin Auth state change:", event, session?.user?.id);
-      
-      if (event === "SIGNED_IN" && session) {
-        try {
-          const { data: adminData, error } = await supabase
-            .from('admin_users')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (error && error.code !== 'PGRST116') {
-            console.error("Error checking admin status on auth change:", error);
-          }
-            
-          setAuthState({
-            isAuthenticated: true,
-            isAdmin: !!adminData,
-            isLoading: false,
-            user: session.user,
-          });
-        } catch (error) {
-          console.error("Error in auth change handler:", error);
-        }
-      } else if (event === "SIGNED_OUT") {
-        setAuthState({
-          isAuthenticated: false,
-          isAdmin: false,
-          isLoading: false,
-          user: null,
-        });
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
+function App() {
   return (
-    <AuthContext.Provider value={authState}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ShopProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/" element={<Index />} />
-                  <Route path="/gallery" element={<Gallery />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/shop" element={<Shop />} />
-                  <Route path="/product/:id" element={<ProductDetail />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
-                  <Route path="/favorites" element={<Favorites />} />
-                  
-                  {/* Auth routes */}
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/auth/login" element={<Auth />} />
-                  <Route path="/auth/register" element={<Auth />} />
-                  
-                  {/* User profile routes */}
-                  <Route 
-                    path="/profile" 
-                    element={
-                      <CustomerProtectedRoute>
-                        <UserProfileLayout />
-                      </CustomerProtectedRoute>
-                    }
-                  >
-                    <Route index element={<UserProfile />} />
-                    <Route path="orders" element={<OrderHistory />} />
-                    <Route path="notifications" element={<NotificationPanel />} />
-                  </Route>
-                  
-                  {/* Admin routes */}
-                  <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route path="/admin" element={
-                    <ProtectedRoute>
-                      <Navigate to="/admin/dashboard" replace />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/dashboard" element={
-                    <ProtectedRoute>
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/products" element={
-                    <ProtectedRoute>
-                      <AdminProducts />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/products/new" element={
-                    <ProtectedRoute>
-                      <ProductForm />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/products/:id" element={
-                    <ProtectedRoute>
-                      <ProductForm />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/photoshoots" element={
-                    <ProtectedRoute>
-                      <PhotoshootManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/orders" element={
-                    <ProtectedRoute>
-                      <AdminOrders />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/orders/:id" element={
-                    <ProtectedRoute>
-                      <OrderDetail />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/customers" element={
-                    <ProtectedRoute>
-                      <AdminCustomers />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/customers/:id" element={
-                    <ProtectedRoute>
-                      <CustomerDetail />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/categories" element={
-                    <ProtectedRoute>
-                      <Categories />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/coupons" element={
-                    <ProtectedRoute>
-                      <CouponManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/settings" element={
-                    <ProtectedRoute>
-                      <AdminSettings />
-                    </ProtectedRoute>
-                  } />
-                  
-                  {/* Catch-all route */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </ShopProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </AuthContext.Provider>
+    <AuthProvider>
+      <ShopProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Index />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/favorites" element={<Favorites />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+          
+          {/* Authentication routes */}
+          <Route path="/auth" element={<Auth />}>
+            <Route path="login" element={<Login />} />
+            <Route path="register" element={<Register />} />
+          </Route>
+          
+          {/* Profile routes */}
+          <Route path="/profile" element={<UserProfileLayout />}>
+            <Route index element={<UserProfile />} />
+            <Route path="notifications" element={<NotificationPanel />} />
+            <Route path="orders" element={<OrderHistory />} />
+          </Route>
+          
+          {/* Admin routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<Dashboard />} />
+          <Route path="/admin/products" element={<Products />} />
+          <Route path="/admin/products/new" element={<ProductForm />} />
+          <Route path="/admin/products/:id" element={<ProductForm />} />
+          <Route path="/admin/categories" element={<Categories />} />
+          <Route path="/admin/orders" element={<Orders />} />
+          <Route path="/admin/orders/:id" element={<OrderDetail />} />
+          <Route path="/admin/customers" element={<Customers />} />
+          <Route path="/admin/customers/:id" element={<CustomerDetail />} />
+          <Route path="/admin/photoshoots" element={<PhotoshootManagement />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
+          <Route path="/admin/coupons" element={<CouponManagement />} />
+          
+          {/* Error routes */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster />
+      </ShopProvider>
+    </AuthProvider>
   );
-};
+}
 
 export default App;
