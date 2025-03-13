@@ -7,11 +7,15 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ShopProvider } from "@/contexts/ShopContext";
 import Index from "./pages/Index";
 import Gallery from "./pages/Gallery";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
+import Shop from "./pages/Shop";
 import ProductDetail from "./pages/ProductDetail";
+import Checkout from "./pages/Checkout";
+import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/admin/Login";
 import AdminLogin from './pages/admin/Login';
@@ -181,108 +185,110 @@ const App = () => {
     <AuthContext.Provider value={authState}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/gallery" element={<Gallery />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
-                
-                {/* Auth routes */}
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/auth/login" element={<Auth />} />
-                <Route path="/auth/register" element={<Auth />} />
-                
-                {/* User profile routes */}
-                <Route 
-                  path="/profile" 
-                  element={
-                    <CustomerProtectedRoute>
-                      <UserProfileLayout />
-                    </CustomerProtectedRoute>
-                  }
-                >
-                  <Route index element={<UserProfile />} />
-                  <Route path="orders" element={<OrderHistory />} />
-                  <Route path="notifications" element={<NotificationPanel />} />
-                </Route>
-                
-                {/* Admin routes */}
-                <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin" element={
-                  <ProtectedRoute>
-                    <Navigate to="/admin/dashboard" replace />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/dashboard" element={
-                  <ProtectedRoute>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/products" element={
-                  <ProtectedRoute>
-                    <AdminProducts />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/products/new" element={
-                  <ProtectedRoute>
-                    <ProductForm />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/products/:id" element={
-                  <ProtectedRoute>
-                    <ProductForm />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/photoshoots" element={
-                  <ProtectedRoute>
-                    <PhotoshootManagement />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/orders" element={
-                  <ProtectedRoute>
-                    <AdminOrders />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/orders/:id" element={
-                  <ProtectedRoute>
-                    <OrderDetail />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/customers" element={
-                  <ProtectedRoute>
-                    <AdminCustomers />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/customers/:id" element={
-                  <ProtectedRoute>
-                    <CustomerDetail />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/categories" element={
-                  <ProtectedRoute>
-                    <Categories />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/settings" element={
-                  <ProtectedRoute>
-                    <AdminSettings />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Redirect /shop to home */}
-                <Route path="/shop" element={<Navigate to="/" replace />} />
-                
-                {/* Catch-all route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
+          <ShopProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/gallery" element={<Gallery />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/shop" element={<Shop />} />
+                  <Route path="/product/:id" element={<ProductDetail />} />
+                  <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/favorites" element={<Favorites />} />
+                  
+                  {/* Auth routes */}
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/login" element={<Auth />} />
+                  <Route path="/auth/register" element={<Auth />} />
+                  
+                  {/* User profile routes */}
+                  <Route 
+                    path="/profile" 
+                    element={
+                      <CustomerProtectedRoute>
+                        <UserProfileLayout />
+                      </CustomerProtectedRoute>
+                    }
+                  >
+                    <Route index element={<UserProfile />} />
+                    <Route path="orders" element={<OrderHistory />} />
+                    <Route path="notifications" element={<NotificationPanel />} />
+                  </Route>
+                  
+                  {/* Admin routes */}
+                  <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/admin" element={
+                    <ProtectedRoute>
+                      <Navigate to="/admin/dashboard" replace />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/dashboard" element={
+                    <ProtectedRoute>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/products" element={
+                    <ProtectedRoute>
+                      <AdminProducts />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/products/new" element={
+                    <ProtectedRoute>
+                      <ProductForm />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/products/:id" element={
+                    <ProtectedRoute>
+                      <ProductForm />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/photoshoots" element={
+                    <ProtectedRoute>
+                      <PhotoshootManagement />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/orders" element={
+                    <ProtectedRoute>
+                      <AdminOrders />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/orders/:id" element={
+                    <ProtectedRoute>
+                      <OrderDetail />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/customers" element={
+                    <ProtectedRoute>
+                      <AdminCustomers />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/customers/:id" element={
+                    <ProtectedRoute>
+                      <CustomerDetail />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/categories" element={
+                    <ProtectedRoute>
+                      <Categories />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/settings" element={
+                    <ProtectedRoute>
+                      <AdminSettings />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Catch-all route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </ShopProvider>
         </AuthProvider>
       </QueryClientProvider>
     </AuthContext.Provider>

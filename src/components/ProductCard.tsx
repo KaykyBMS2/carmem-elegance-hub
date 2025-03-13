@@ -1,6 +1,8 @@
 
 import { Link } from 'react-router-dom';
 import { Badge } from './ui/badge';
+import { Heart } from 'lucide-react';
+import { useShop } from '@/contexts/ShopContext';
 
 export interface ProductCardProps {
   id: string;
@@ -29,6 +31,29 @@ const ProductCard = ({
   const formattedPrice = (value: number) => 
     value.toFixed(2).replace('.', ',');
   
+  const { addToFavorites, removeFromFavorites, isInFavorites } = useShop();
+  const isFavorite = isInFavorites(id);
+  
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isFavorite) {
+      removeFromFavorites(id);
+    } else {
+      addToFavorites({
+        id,
+        name,
+        price,
+        salePrice,
+        promoPrice,
+        imageUrl,
+        isRental,
+        rentalPrice
+      });
+    }
+  };
+  
   return (
     <Link to={`/product/${id}`} className={`block group ${className}`}>
       <div className="overflow-hidden rounded-lg bg-gray-100 aspect-square mb-3 relative">
@@ -48,6 +73,18 @@ const ProductCard = ({
             Oferta
           </Badge>
         )}
+        
+        <button 
+          onClick={handleFavoriteClick}
+          className={`absolute right-2 bottom-2 rounded-full p-2 transition-all duration-200 ${
+            isFavorite 
+              ? 'bg-brand-purple text-white' 
+              : 'bg-white/80 text-gray-600 hover:bg-brand-purple/10'
+          }`}
+          aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+        >
+          <Heart className={`h-4 w-4 ${isFavorite ? 'fill-white' : ''}`} />
+        </button>
       </div>
       <h3 className="text-sm font-medium text-gray-800 transition-colors group-hover:text-brand-purple line-clamp-2 font-montserrat">
         {name}
