@@ -39,7 +39,12 @@ const OrderConfirmation = () => {
         if (orderError) throw orderError;
         
         if (orderData) {
-          setOrder(orderData);
+          const typedOrder: Order = {
+            ...orderData,
+            is_rental: orderData.rental_start_date !== null
+          };
+          
+          setOrder(typedOrder);
           
           // Fetch order items
           const { data: itemsData, error: itemsError } = await supabase
@@ -57,7 +62,7 @@ const OrderConfirmation = () => {
             const formattedItems: OrderItem[] = itemsData.map(item => {
               // Extract the image URL from the first product image
               let imageUrl = '/placeholder.svg';
-              if (item.product_images && item.product_images.length > 0) {
+              if (item.product_images && Array.isArray(item.product_images) && item.product_images.length > 0) {
                 imageUrl = item.product_images[0].image_url;
               }
               
@@ -255,7 +260,7 @@ const OrderConfirmation = () => {
                       </div>
                     </div>
                     
-                    {order.is_rental && (
+                    {order.rental_start_date && (
                       <>
                         <Separator />
                         

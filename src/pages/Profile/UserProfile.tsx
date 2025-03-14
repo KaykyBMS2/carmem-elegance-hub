@@ -43,6 +43,16 @@ const UserProfile = () => {
   });
 
   useEffect(() => {
+    const fetchProfileData = async () => {
+      if (user) {
+        await refreshProfile();
+      }
+    };
+    
+    fetchProfileData();
+  }, [user, refreshProfile]);
+
+  useEffect(() => {
     if (profile) {
       setValue('name', profile.name || '');
       setValue('email', profile.email || '');
@@ -74,6 +84,9 @@ const UserProfile = () => {
         title: "Perfil atualizado",
         description: "Suas informações foram atualizadas com sucesso.",
       });
+      
+      // Reload profile data to confirm changes
+      await refreshProfile();
     } catch (error: any) {
       toast({
         variant: "destructive",
